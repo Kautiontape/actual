@@ -5,8 +5,12 @@ on:
   pull_request:
     branches: [ktn] # build-gate for upstream-sync PRs (cloud only — safe for untrusted)
   workflow_dispatch:
-concurrency: { group: ktn-build-${{ github.ref }}, cancel-in-progress: true }
-permissions: { contents: read, packages: write }
+concurrency:
+  group: ktn-build-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+  packages: write
 jobs:
   build:
     runs-on: ubuntu-latest
