@@ -1,0 +1,15 @@
+services:
+  actual:
+    image: ghcr.io/kautiontape/actual:latest
+    restart: always
+    volumes:
+      - actual_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'node scripts/health-check.js']
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+volumes:
+  actual_data:
+    name: actual_data

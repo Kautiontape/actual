@@ -1,0 +1,41 @@
+name: ktn upstream sync
+on:
+  workflow_dispatch: # manual — run when you want to check for an update
+  # schedule: [{ cron: '0 6 * * 1' }]  # optional: weekly auto-check (Mon 06:00 UTC)
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions: { contents: write, pull-requests: write, issues: write }
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: ktn, fetch-depth: 0 }
+      - id: detect
+        run: |
+          git remote add upstream https://github.com/actualbudget/actual.git
+          git fetch upstream --tags --quiet
+          echo "current=$(cat .ktn-base)" >> "$GITHUB_OUTPUT"
+          echo "latest=$(git tag -l 'v*' --sort=-v:refname | head -1)" >> "$GITHUB_OUTPUT"
+      - id: rebase
+        if: steps.detect.outputs.latest != steps.detect.outputs.current
+        run: |
+          git config user.name ktn-bot; git config user.email ktn-bot@users.noreply.github.com
+          git checkout -B ktn-next ktn
+          if git rebase --onto "${{ steps.detect.outputs.latest }}" "${{ steps.detect.outputs.current }}" ktn-next; then
+            echo "${{ steps.detect.outputs.latest }}" > .ktn-base
+            git commit -am "ktn: track ${{ steps.detect.outputs.latest }}"
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            git rebase --abort || true; echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.rebase.outputs.ok == 'true'
+        env: { GH_TOKEN: ${{ github.token }} }
+        run: |
+          git push -f origin ktn-next
+          gh pr create --base ktn --head ktn-next \
+            --title "Upstream sync → ${{ steps.detect.outputs.latest }}" \
+            --body "Automated rebase of ktn patches onto ${{ steps.detect.outputs.latest }}. The build gate runs on this PR — green means the patches still compile. Review & merge to deploy."
+      - if: steps.rebase.outputs.ok == 'false'
+        env: { GH_TOKEN: ${{ github.token }} }
+        run: |
+          gh issue create --title "⚠️ Upstream sync conflict → ${{ steps.detect.outputs.latest }}" \
+            --body "Rebase of ktn patches onto ${{ steps.detect.outputs.latest }} hit conflicts. Resolve locally: git fetch upstream --tags && git rebase --onto ${{ steps.detect.outputs.latest }} ${{ steps.detect.outputs.current }} ktn"

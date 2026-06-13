@@ -1,0 +1,23 @@
+name: ktn deploy
+on:
+  workflow_run:
+    workflows: ['ktn build & publish']
+    types: [completed]
+    branches: [ktn]
+  workflow_dispatch:
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: [self-hosted, ktn]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ktn
+          sparse-checkout: |
+            deploy/ktn
+          sparse-checkout-cone-mode: false
+      - run: |
+          cd deploy/ktn
+          docker compose -p actual -f docker-compose.yml -f docker-compose.ktn.yml pull
+          docker compose -p actual -f docker-compose.yml -f docker-compose.ktn.yml up -d
+          docker image prune -f
