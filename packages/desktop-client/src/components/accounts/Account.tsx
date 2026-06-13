@@ -86,6 +86,7 @@ import { updateNewTransactions } from '#transactions/transactionsSlice';
 
 import { AccountEmptyMessage } from './AccountEmptyMessage';
 import { AccountHeader } from './Header';
+import { mergeWithPreviews } from './previewVisibility';
 
 type ConditionEntity = Partial<RuleConditionEntity> | TransactionFilterEntity;
 
@@ -116,6 +117,8 @@ function AllTransactions({
   children,
 }: AllTransactionsProps) {
   const accountId = account?.id;
+  const [hideScheduledPref] = useSyncedPref(`hide-scheduled-${accountId}`);
+  const hideScheduled = hideScheduledPref === 'true';
   const { dispatch: splitsExpandedDispatch } = useSplitsExpanded();
   const { previewTransactions, isLoading: isPreviewTransactionsLoading } =
     useAccountPreviewTransactions({ accountId });
@@ -159,21 +162,22 @@ function AllTransactions({
     );
   }, [showBalances, previewTransactions, runningBalance]);
 
-  const allTransactions = useMemo(() => {
-    // Don't prepend scheduled transactions if we are filtering
-    if (!filtered && previewTransactions.length > 0) {
-      return previewTransactions.concat(transactions);
-    }
-    return transactions;
-  }, [filtered, previewTransactions, transactions]);
+  const allTransactions = useMemo(
+    () =>
+      mergeWithPreviews(transactions, previewTransactions, {
+        filtered: !!filtered,
+        hideScheduled,
+      }),
+    [filtered, hideScheduled, previewTransactions, transactions],
+  );
 
   const allBalances = useMemo(() => {
-    // Don't prepend scheduled transactions if we are filtering
-    if (!filtered && prependBalances && balances) {
+    // Don't prepend scheduled transactions if we are filtering or hiding them
+    if (!filtered && !hideScheduled && prependBalances && balances) {
       return { ...prependBalances, ...balances };
     }
     return balances;
-  }, [filtered, prependBalances, balances]);
+  }, [filtered, hideScheduled, prependBalances, balances]);
 
   if (!previewTransactions?.length || filtered) {
     return children(transactions, balances);
