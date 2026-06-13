@@ -770,11 +770,18 @@ function AccountMenu({
 }: AccountMenuProps) {
   const { t } = useTranslation();
   const syncServerStatus = useSyncServerStatus();
+  const [hideScheduled, setHideScheduled] = useSyncedPref(
+    `hide-scheduled-${account.id}`,
+  );
 
   return (
     <Menu
       slot="close"
       onMenuSelect={item => {
+        if (item === 'toggle-scheduled') {
+          setHideScheduled(hideScheduled === 'true' ? 'false' : 'true');
+          return;
+        }
         onMenuSelect(item);
       }}
       items={[
@@ -813,6 +820,13 @@ function AccountMenu({
           text: showReconciled
             ? t('Hide reconciled transactions')
             : t('Show reconciled transactions'),
+        },
+        {
+          name: 'toggle-scheduled',
+          text:
+            hideScheduled === 'true'
+              ? t('Show scheduled transactions')
+              : t('Hide scheduled transactions'),
         },
         { name: 'export', text: t('Export') },
         ...(account && !account.closed
