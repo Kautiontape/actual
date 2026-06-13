@@ -22,17 +22,17 @@ describe('reconcileStatusUpdate', () => {
     });
   });
 
-  it('shift+click reconciles an uncleared transaction', () => {
-    expect(reconcileStatusUpdate(null, true)).toEqual({
-      field: 'reconciled',
-      value: true,
-    });
-  });
-
   it('shift+click un-reconciles a reconciled transaction', () => {
     expect(reconcileStatusUpdate('reconciled', true)).toEqual({
       field: 'reconciled',
       value: false,
+    });
+  });
+
+  it('shift+click on an uncleared row only clears it (reconcile requires a cleared row)', () => {
+    expect(reconcileStatusUpdate(null, true)).toEqual({
+      field: 'cleared',
+      value: true,
     });
   });
 });
