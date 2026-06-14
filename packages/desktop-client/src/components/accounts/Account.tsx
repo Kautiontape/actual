@@ -98,6 +98,7 @@ function isTransactionFilterEntity(
 
 type AllTransactionsProps = {
   account?: AccountEntity | undefined;
+  accountId?: string | undefined;
   transactions: TransactionEntity[];
   balances: Record<TransactionEntity['id'], IntegerAmount> | null;
   showBalances?: boolean | undefined;
@@ -110,18 +111,23 @@ type AllTransactionsProps = {
 
 function AllTransactions({
   account,
+  accountId,
   transactions,
   balances,
   showBalances,
   filtered,
   children,
 }: AllTransactionsProps) {
-  const accountId = account?.id;
+  // Preview/scheduled rows are keyed off the real account id (undefined in the
+  // combined "All/On/Off budget" views, which then show all previews), while
+  // the hide-scheduled pref is keyed off the view id (`accountId`) so the
+  // toolbar toggle works per-view in those combined registers too.
+  const previewAccountId = account?.id;
   const [hideScheduledPref] = useSyncedPref(`hide-scheduled-${accountId}`);
   const hideScheduled = hideScheduledPref === 'true';
   const { dispatch: splitsExpandedDispatch } = useSplitsExpanded();
   const { previewTransactions, isLoading: isPreviewTransactionsLoading } =
-    useAccountPreviewTransactions({ accountId });
+    useAccountPreviewTransactions({ accountId: previewAccountId });
 
   useEffect(() => {
     if (!isPreviewTransactionsLoading) {
@@ -1770,6 +1776,7 @@ class AccountInternal extends PureComponent<
     return (
       <AllTransactions
         account={account}
+        accountId={accountId}
         transactions={transactions}
         balances={balances}
         showBalances={showBalances}

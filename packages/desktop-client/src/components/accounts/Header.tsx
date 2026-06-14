@@ -499,66 +499,60 @@ export function AccountHeader({
               )}
             </View>
           </Button>
-          {account && (
-            <Button
-              variant="bare"
-              aria-label={
+          <Button
+            variant="bare"
+            aria-label={
+              hideScheduled
+                ? t('Show upcoming transactions')
+                : t('Hide upcoming transactions')
+            }
+            style={{ padding: 6 }}
+            onPress={() =>
+              setHideScheduledPref(hideScheduled ? 'false' : 'true')
+            }
+          >
+            <View
+              title={
                 hideScheduled
                   ? t('Show upcoming transactions')
                   : t('Hide upcoming transactions')
               }
-              style={{ padding: 6 }}
-              onPress={() =>
-                setHideScheduledPref(hideScheduled ? 'false' : 'true')
-              }
             >
-              <View
-                title={
-                  hideScheduled
-                    ? t('Show upcoming transactions')
-                    : t('Hide upcoming transactions')
-                }
-              >
-                <SvgCalendar3
-                  style={{
-                    width: 14,
-                    height: 14,
-                    ...(hideScheduled && { color: theme.pageTextSubdued }),
-                  }}
-                />
-              </View>
-            </Button>
-          )}
-          {account && (
-            <Button
-              variant="bare"
-              aria-label={
+              <SvgCalendar3
+                style={{
+                  width: 14,
+                  height: 14,
+                  ...(hideScheduled && { color: theme.pageTextSubdued }),
+                }}
+              />
+            </View>
+          </Button>
+          <Button
+            variant="bare"
+            aria-label={
+              showReconciled
+                ? t('Hide reconciled transactions')
+                : t('Show reconciled transactions')
+            }
+            style={{ padding: 6 }}
+            onPress={() => onMenuSelect('toggle-reconciled')}
+          >
+            <View
+              title={
                 showReconciled
                   ? t('Hide reconciled transactions')
                   : t('Show reconciled transactions')
               }
-              style={{ padding: 6 }}
-              onPress={() => onMenuSelect('toggle-reconciled')}
             >
-              <View
-                title={
-                  showReconciled
-                    ? t('Hide reconciled transactions')
-                    : t('Show reconciled transactions')
+              <SvgLockClosed
+                width={14}
+                height={14}
+                style={
+                  showReconciled ? undefined : { color: theme.pageTextSubdued }
                 }
-              >
-                <SvgLockClosed
-                  width={14}
-                  height={14}
-                  style={
-                    showReconciled
-                      ? undefined
-                      : { color: theme.pageTextSubdued }
-                  }
-                />
-              </View>
-            </Button>
-          )}
+              />
+            </View>
+          </Button>
           {account ? (
             <View style={{ flex: '0 0 auto' }}>
               <DialogTrigger>
