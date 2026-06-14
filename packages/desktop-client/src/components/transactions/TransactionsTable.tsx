@@ -135,7 +135,6 @@ import { getPayeesById } from '#payees';
 import { aqlQuery } from '#queries/aqlQuery';
 import { useDispatch } from '#redux';
 
-import { reconcileStatusUpdate } from './reconcileStatusUpdate';
 import {
   deserializeTransaction,
   isLastChild,
@@ -382,18 +381,9 @@ function StatusCell({
               ? theme.pageTextLinkLight
               : theme.pageTextSubdued;
 
-  function onSelect(e?: { shiftKey?: boolean }) {
-    if (!isClearedField) {
-      return;
-    }
-    const { field, value } = reconcileStatusUpdate(
-      status,
-      e?.shiftKey ?? false,
-    );
-    if (field === 'reconciled') {
-      onUpdate('reconciled', value);
-    } else {
-      onUpdate('cleared', value);
+  function onSelect() {
+    if (isClearedField) {
+      onUpdate('cleared', !(status === 'cleared'));
     }
   }
 
