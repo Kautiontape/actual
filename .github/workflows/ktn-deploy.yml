@@ -1,13 +1,12 @@
 name: ktn deploy
 on:
-  # Steady state: auto-deploy after every successful image build. Kept COMMENTED
-  # until the first deliberate cutover is done + verified; enable it then by
-  # uncommenting these four lines (the push-based equivalent of a watchtower —
-  # the runner pulls when we ship, no polling service).
-  # workflow_run:
-  #   workflows: ['ktn build & publish']
-  #   types: [completed]
-  #   branches: [ktn]
+  # Auto-deploy after every successful image build — the push-based equivalent of a
+  # watchtower (the runner pulls when we ship; no polling service). Enabled after the
+  # first deliberate cutover (2026-06-14) was verified.
+  workflow_run:
+    workflows: ['ktn build & publish']
+    types: [completed]
+    branches: [ktn]
   workflow_dispatch:
 jobs:
   deploy:
