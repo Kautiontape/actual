@@ -1,9 +1,25 @@
+# Canonical compose for the Actual service on ktn.
+#
+# The ktn-deploy workflow syncs this file verbatim to
+# /opt/services/actual/docker-compose.yml, then runs `docker compose pull && up -d`
+# in place. It mirrors the pre-fork prod service exactly (container `actual`,
+# named volume `actual-data`, loopback :8110) so the cutover is a pure image swap
+# that keeps the existing budget data and never spawns a parallel stack.
+#
+# Only two things differ from the old Docker Hub deployment:
+#   - image:        ghcr.io/kautiontape/actual:latest  — our cloud-built fork
+#   - healthcheck:  node scripts/health-check.js        — our v26.6.0 image flattens
+#                   the entry to /app, so the script is at /app/scripts/… (the stock
+#                   image had it at /app/src/scripts/…)
 services:
   actual:
     image: ghcr.io/kautiontape/actual:latest
-    restart: always
+    container_name: actual
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:8110:5006'
     volumes:
-      - actual_data:/data
+      - actual-data:/data
     healthcheck:
       test: ['CMD-SHELL', 'node scripts/health-check.js']
       interval: 60s
@@ -11,5 +27,5 @@ services:
       retries: 3
       start_period: 20s
 volumes:
-  actual_data:
-    name: actual_data
+  actual-data:
+    name: actual-data

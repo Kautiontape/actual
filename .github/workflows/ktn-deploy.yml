@@ -1,9 +1,13 @@
 name: ktn deploy
 on:
-  workflow_run:
-    workflows: ['ktn build & publish']
-    types: [completed]
-    branches: [ktn]
+  # Steady state: auto-deploy after every successful image build. Kept COMMENTED
+  # until the first deliberate cutover is done + verified; enable it then by
+  # uncommenting these four lines (the push-based equivalent of a watchtower —
+  # the runner pulls when we ship, no polling service).
+  # workflow_run:
+  #   workflows: ['ktn build & publish']
+  #   types: [completed]
+  #   branches: [ktn]
   workflow_dispatch:
 jobs:
   deploy:
@@ -22,8 +26,14 @@ jobs:
       # public or private — no long-lived token stored on the runner.
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      - run: |
-          cd deploy/ktn
-          docker compose -p actual -f docker-compose.yml -f docker-compose.ktn.yml pull
-          docker compose -p actual -f docker-compose.yml -f docker-compose.ktn.yml up -d
+      # Deploy in place on the existing service dir: reuse container `actual`,
+      # named volume `actual-data`, and loopback :8110. The repo's compose is the
+      # source of truth and is synced into place here, so a deploy is a pure image
+      # pull + restart and can never spawn a second, data-less container.
+      - name: Sync compose, pull, and restart in place
+        run: |
+          install -D -m 0644 deploy/ktn/docker-compose.yml /opt/services/actual/docker-compose.yml
+          cd /opt/services/actual
+          docker compose pull
+          docker compose up -d
           docker image prune -f
