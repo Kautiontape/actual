@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { theme } from '@actual-app/components/theme';
@@ -25,6 +25,14 @@ export function Accounts() {
   const { t } = useTranslation();
   const [isDragging, setIsDragging] = useState(false);
   const { data: accounts = [] } = useAccounts();
+  const syncedPrefs = useSelector(state => state.prefs.synced);
+  const excludedNetWorthIds = useMemo(
+    () =>
+      accounts
+        .filter(a => syncedPrefs[`exclude-from-net-worth-${a.id}`] === 'true')
+        .map(a => a.id),
+    [accounts, syncedPrefs],
+  );
   const failedAccounts = useFailedAccounts();
   const updatedAccounts = useUpdatedAccounts();
   const { data: offbudgetAccounts = [] } = useOffBudgetAccounts();
@@ -94,7 +102,7 @@ export function Accounts() {
         <Account
           name={t('All accounts')}
           to="/accounts"
-          query={bindings.allAccountBalance()}
+          query={bindings.allAccountBalance(excludedNetWorthIds)}
           style={{ fontWeight, marginTop: 15 }}
           isExactPathMatch
           balanceTestId="sidebar-all-accounts-balance"
@@ -104,7 +112,7 @@ export function Accounts() {
           <Account
             name={t('On budget')}
             to="/accounts/onbudget"
-            query={bindings.onBudgetAccountBalance()}
+            query={bindings.onBudgetAccountBalance(excludedNetWorthIds)}
             style={{
               fontWeight,
               marginTop: 13,
@@ -136,7 +144,7 @@ export function Accounts() {
           <Account
             name={t('Off budget')}
             to="/accounts/offbudget"
-            query={bindings.offBudgetAccountBalance()}
+            query={bindings.offBudgetAccountBalance(excludedNetWorthIds)}
             style={{
               fontWeight,
               marginTop: 13,
