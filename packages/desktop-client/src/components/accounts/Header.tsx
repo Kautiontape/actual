@@ -9,6 +9,7 @@ import { AnimatedLoading } from '@actual-app/components/icons/AnimatedLoading';
 import {
   SvgAdd,
   SvgDotsHorizontalTriple,
+  SvgEquals,
 } from '@actual-app/components/icons/v1';
 import {
   SvgArrowsExpand3,
@@ -456,7 +457,7 @@ export function AccountHeader({
                   }}
                 >
                   <View>
-                    <SvgLockClosed width={14} height={14} />
+                    <SvgEquals width={14} height={14} />
                   </View>
                 </Button>
                 <Popover
