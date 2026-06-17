@@ -263,6 +263,8 @@ type AccountInternalProps = {
   onUnlinkAccount: (id: AccountEntity['id']) => void;
   onSyncAndDownload: (accountId?: AccountEntity['id']) => void;
   onCreatePayee: (name: PayeeEntity['name']) => Promise<PayeeEntity['id']>;
+  paymentSource?: string | null;
+  onSetPaymentSource?: (sourceAccountId: AccountEntity['id']) => void;
 };
 
 type AccountInternalState = {
@@ -282,6 +284,8 @@ type AccountInternalState = {
   showReconciled: boolean;
   nameError: string;
   isAdding: boolean;
+  addTransactionSeed?: Partial<TransactionEntity>;
+  addTransactionFocusField?: string;
   modalShowing?: boolean;
   sort: {
     ascDesc: 'asc' | 'desc';
@@ -752,8 +756,73 @@ class AccountInternal extends PureComponent<
     }
   };
 
-  onAddTransaction = () => {
-    this.setState({ isAdding: true });
+  onAddTransaction = (
+    seed?: Partial<TransactionEntity>,
+    focusField?: string,
+  ) => {
+    this.setState({
+      isAdding: true,
+      addTransactionSeed: seed,
+      addTransactionFocusField: focusField,
+    });
+  };
+
+  onRecordPayment = async () => {
+    const { accountId, paymentSource } = this.props;
+    if (!accountId) {
+      return;
+    }
+
+    // Pay off the full cleared balance: a deposit into this account equal to
+    // the negation of its (negative) cleared balance.
+    const { data } = await aqlQuery(
+      q('transactions')
+        .filter({ cleared: true, account: accountId })
+        .select('*')
+        .options({ splits: 'grouped' }),
+    );
+    const clearedBalance = ungroupTransactions(data)
+      .filter(trans => !trans.is_parent)
+      .reduce((sum, trans) => sum + trans.amount, 0);
+    const depositAmount = -clearedBalance;
+
+    if (paymentSource) {
+      this.seedPayment(depositAmount, paymentSource);
+      return;
+    }
+
+    // No remembered pay-from account yet: ask once, remember it, then seed.
+    this.props.dispatch(
+      pushModal({
+        modal: {
+          name: 'account-autocomplete',
+          options: {
+            hiddenAccounts: [accountId],
+            onSelect: (sourceAccountId: AccountEntity['id']) => {
+              this.props.onSetPaymentSource?.(sourceAccountId);
+              this.seedPayment(depositAmount, sourceAccountId);
+            },
+          },
+        },
+      }),
+    );
+  };
+
+  seedPayment = (
+    depositAmount: number,
+    sourceAccountId: AccountEntity['id'],
+  ) => {
+    const transferPayee = this.props.payees.find(
+      payee => payee.transfer_acct === sourceAccountId,
+    );
+    this.onAddTransaction(
+      {
+        amount: depositAmount,
+        payee: transferPayee?.id,
+        cleared: false,
+      },
+      transferPayee ? 'credit' : 'payee',
+    );
   };
 
   onSaveName = (name: string) => {
@@ -791,7 +860,8 @@ class AccountInternal extends PureComponent<
       | 'remove-sorting'
       | 'toggle-cleared'
       | 'toggle-reconciled'
-      | 'toggle-net-worth-chart',
+      | 'toggle-net-worth-chart'
+      | 'change-payment-source',
   ) => {
     const accountId = this.props.accountId!;
     const account = this.props.accounts.find(
@@ -832,6 +902,21 @@ class AccountInternal extends PureComponent<
         break;
       case 'reopen':
         this.props.onReopenAccount(accountId);
+        break;
+      case 'change-payment-source':
+        this.props.dispatch(
+          pushModal({
+            modal: {
+              name: 'account-autocomplete',
+              options: {
+                hiddenAccounts: [accountId],
+                onSelect: (sourceAccountId: AccountEntity['id']) => {
+                  this.props.onSetPaymentSource?.(sourceAccountId);
+                },
+              },
+            },
+          }),
+        );
         break;
       case 'export':
         const accountName = this.getAccountTitle(account, accountId);
@@ -1859,6 +1944,7 @@ class AccountInternal extends PureComponent<
                 onShowTransactions={this.onShowTransactions}
                 onMenuSelect={this.onMenuSelect}
                 onAddTransaction={this.onAddTransaction}
+                onRecordPayment={this.onRecordPayment}
                 onToggleExtraBalances={this.onToggleExtraBalances}
                 onSaveName={this.onSaveName}
                 saveNameError={this.state.nameError}
@@ -1923,6 +2009,8 @@ class AccountInternal extends PureComponent<
                     accountId !== 'uncategorized'
                   }
                   isAdding={this.state.isAdding}
+                  addTransactionSeed={this.state.addTransactionSeed}
+                  addTransactionFocusField={this.state.addTransactionFocusField}
                   isNew={this.isNew}
                   isMatched={this.isMatched}
                   isFiltered={transactionsFiltered}
@@ -2053,6 +2141,9 @@ export function Account() {
   const [showExtraBalances, setShowExtraBalances] = useSyncedPref(
     `show-extra-balances-${params.id || 'all-accounts'}`,
   );
+  const [paymentSource, setPaymentSource] = useSyncedPref(
+    `payment-source-${params.id}`,
+  );
   const modalShowing = useSelector(state => state.modals.modalStack.length > 0);
   const accountsSyncing = useSelector(state => state.account.accountsSyncing);
   const filterConditions = location?.state?.filterConditions || [];
@@ -2111,6 +2202,10 @@ export function Account() {
               setShowExtraBalances(String(extraBalances))
             }
             payees={payees}
+            paymentSource={paymentSource}
+            onSetPaymentSource={sourceAccountId =>
+              setPaymentSource(sourceAccountId)
+            }
             modalShowing={modalShowing}
             accountsSyncing={accountsSyncing}
             filterConditions={filterConditions}
