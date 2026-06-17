@@ -92,6 +92,12 @@ type AccountHeaderProps = {
   onCreateReconciliationTransaction: ComponentProps<
     typeof ReconcilingMessage
   >['onCreateTransaction'];
+  onUpdateReconcileAmount: ComponentProps<
+    typeof ReconcilingMessage
+  >['onUpdateTargetBalance'];
+  onClearTransactions: ComponentProps<
+    typeof ReconcilingMessage
+  >['onClearTransactions'];
   onToggleExtraBalances: ComponentProps<
     typeof Balances
   >['onToggleExtraBalances'];
@@ -164,6 +170,8 @@ export function AccountHeader({
   onShowTransactions,
   onDoneReconciling,
   onCreateReconciliationTransaction,
+  onUpdateReconcileAmount,
+  onClearTransactions,
   onToggleExtraBalances,
   onSaveName,
   saveNameError,
@@ -642,8 +650,11 @@ export function AccountHeader({
         <ReconcilingMessage
           targetBalance={reconcileAmount}
           balanceQuery={balanceQuery}
+          accountId={accountId}
           onDone={onDoneReconciling}
           onCreateTransaction={onCreateReconciliationTransaction}
+          onUpdateTargetBalance={onUpdateReconcileAmount}
+          onClearTransactions={onClearTransactions}
         />
       )}
     </>

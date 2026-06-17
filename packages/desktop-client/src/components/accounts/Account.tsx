@@ -1003,6 +1003,42 @@ class AccountInternal extends PureComponent<
     }));
   };
 
+  onUpdateReconcileAmount = (amount: number) => {
+    this.setState({ reconcileAmount: amount });
+  };
+
+  onClearTransactions = async (ids: Array<TransactionEntity['id']>) => {
+    this.setState({ workingHard: true });
+
+    const { data } = await aqlQuery(
+      q('transactions')
+        .filter({ id: { $oneof: ids } })
+        .select('*')
+        .options({ splits: 'grouped' }),
+    );
+    let transactions = ungroupTransactions(data);
+
+    const changes: { updated: Array<Partial<TransactionEntity>> } = {
+      updated: [],
+    };
+
+    transactions.forEach(trans => {
+      const { diff } = updateTransaction(transactions, {
+        ...trans,
+        cleared: true,
+      });
+
+      transactions = applyChanges(diff, transactions);
+
+      changes.updated = changes.updated
+        ? changes.updated.concat(diff.updated)
+        : diff.updated;
+    });
+
+    await send('transactions-batch-update', changes);
+    await this.refetchTransactions();
+  };
+
   onDoneReconciling = async () => {
     const { accountId } = this.props;
     const account = this.props.accounts.find(
@@ -1831,6 +1867,8 @@ class AccountInternal extends PureComponent<
                 onCreateReconciliationTransaction={
                   this.onCreateReconciliationTransaction
                 }
+                onUpdateReconcileAmount={this.onUpdateReconcileAmount}
+                onClearTransactions={this.onClearTransactions}
                 onSync={this.onSync}
                 onImport={this.onImport}
                 onBatchDelete={this.onBatchDelete}

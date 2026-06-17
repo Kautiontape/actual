@@ -13,29 +13,40 @@ import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import type { Query } from '@actual-app/core/shared/query';
 import { tsToRelativeTime } from '@actual-app/core/shared/util';
-import type { AccountEntity } from '@actual-app/core/types/models';
+import type {
+  AccountEntity,
+  TransactionEntity,
+} from '@actual-app/core/types/models';
 import type { TransObjectLiteral } from '@actual-app/core/types/util';
-import { format as formatDate } from 'date-fns';
+import { format as formatDate, parseISO } from 'date-fns';
 import { t } from 'i18next';
 
 import { useDateFormat } from '#hooks/useDateFormat';
 import { useFormat } from '#hooks/useFormat';
 import { useLocale } from '#hooks/useLocale';
+import { usePayeesById } from '#hooks/usePayees';
+import { useReconciliationSuggestion } from '#hooks/useReconciliationSuggestion';
 import { useSheetValue } from '#hooks/useSheetValue';
 import * as bindings from '#spreadsheet/bindings';
 
 type ReconcilingMessageProps = {
   balanceQuery: { name: `balance-query-${string}`; query: Query };
   targetBalance: number;
+  accountId?: AccountEntity['id'];
   onDone: () => void;
   onCreateTransaction: (targetDiff: number) => void;
+  onUpdateTargetBalance?: (amount: number) => void;
+  onClearTransactions?: (ids: Array<TransactionEntity['id']>) => void;
 };
 
 export function ReconcilingMessage({
   balanceQuery,
   targetBalance,
+  accountId,
   onDone,
   onCreateTransaction,
+  onUpdateTargetBalance,
+  onClearTransactions,
 }: ReconcilingMessageProps) {
   const cleared =
     useSheetValue<'balance', `balance-query-${string}-cleared`>({
@@ -45,7 +56,18 @@ export function ReconcilingMessage({
       query: balanceQuery.query.filter({ cleared: true }),
     }) ?? 0;
   const format = useFormat();
+  const dateFormat = useDateFormat() || 'MM/dd/yyyy';
+  const locale = useLocale();
+  const { data: payeesById = {} } = usePayeesById();
   const targetDiff = targetBalance - cleared;
+
+  const suggestion = useReconciliationSuggestion({
+    accountId,
+    targetBalance,
+    clearedBalance: cleared,
+    targetDiff,
+  });
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
 
   const clearedBalance = format(cleared, 'financial');
   const bankBalance = format(targetBalance, 'financial');
@@ -55,7 +77,7 @@ export function ReconcilingMessage({
   return (
     <View
       style={{
-        flexDirection: 'row',
+        flexDirection: 'column',
         alignSelf: 'center',
         backgroundColor: theme.tableBackground,
         ...styles.shadow,
@@ -109,7 +131,7 @@ export function ReconcilingMessage({
               : t('Exit reconciliation')}
           </Button>
         </View>
-        {targetDiff !== 0 && (
+        {targetDiff !== 0 && !isConfirmingClear && (
           <View style={{ marginLeft: 15 }}>
             <Button onPress={() => onCreateTransaction(targetDiff)}>
               <Trans>Create reconciliation transaction</Trans>
@@ -117,6 +139,118 @@ export function ReconcilingMessage({
           </View>
         )}
       </View>
+
+      {targetDiff !== 0 &&
+        suggestion.type === 'signFlip' &&
+        onUpdateTargetBalance && (
+          <View
+            style={{
+              marginTop: 10,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ marginRight: 10 }}>
+              <Trans>
+                This looks like a sign error. Did you mean{' '}
+                <strong>
+                  {
+                    {
+                      corrected: format(
+                        suggestion.correctedBalance,
+                        'financial',
+                      ),
+                    } as TransObjectLiteral
+                  }
+                </strong>
+                ?
+              </Trans>
+            </Text>
+            <Button
+              variant="primary"
+              onPress={() => onUpdateTargetBalance(suggestion.correctedBalance)}
+            >
+              {t('Use {{corrected}}', {
+                corrected: format(suggestion.correctedBalance, 'financial'),
+              })}
+            </Button>
+          </View>
+        )}
+
+      {targetDiff !== 0 &&
+        suggestion.type === 'clearTransactions' &&
+        onClearTransactions &&
+        (!isConfirmingClear ? (
+          <View
+            style={{
+              marginTop: 10,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ marginRight: 10 }}>
+              <Trans>
+                These uncleared transactions add up to exactly{' '}
+                <strong>{{ difference } as TransObjectLiteral}</strong>.
+              </Trans>
+            </Text>
+            <Button
+              variant="primary"
+              onPress={() => setIsConfirmingClear(true)}
+            >
+              <Trans>Review &amp; mark cleared</Trans>
+            </Button>
+          </View>
+        ) : (
+          <View style={{ marginTop: 10 }}>
+            <View style={{ marginBottom: 8 }}>
+              {suggestion.transactions.map(transaction => (
+                <View
+                  key={transaction.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: '2px 0',
+                  }}
+                >
+                  <Text style={{ marginRight: 12, color: theme.tableText }}>
+                    {formatDate(parseISO(transaction.date), dateFormat, {
+                      locale,
+                    })}
+                  </Text>
+                  <Text
+                    style={{ flex: 1, marginRight: 12, color: theme.tableText }}
+                  >
+                    {(transaction.payee &&
+                      payeesById[transaction.payee]?.name) ||
+                      ''}
+                  </Text>
+                  <Text style={{ fontWeight: 700 }}>
+                    {format(transaction.amount, 'financial')}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
+              <Button
+                variant="primary"
+                style={{ marginRight: 10 }}
+                onPress={() =>
+                  onClearTransactions(
+                    suggestion.transactions.map(transaction => transaction.id),
+                  )
+                }
+              >
+                <Trans>Mark cleared &amp; reconcile</Trans>
+              </Button>
+              <Button onPress={() => setIsConfirmingClear(false)}>
+                <Trans>Cancel</Trans>
+              </Button>
+            </View>
+          </View>
+        ))}
     </View>
   );
 }
