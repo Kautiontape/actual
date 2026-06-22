@@ -7,6 +7,7 @@ import { animated, config, useSpring } from 'react-spring';
 import { useResponsive } from '@actual-app/components/hooks/useResponsive';
 import {
   SvgAdd,
+  SvgCode,
   SvgCog,
   SvgCreditCard,
   SvgPiggyBank,
@@ -21,6 +22,7 @@ import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import { useDrag } from '@use-gesture/react';
 
+import { useFeatureFlag } from '#hooks/useFeatureFlag';
 import { useIsTestEnv } from '#hooks/useIsTestEnv';
 import { useScrollListener } from '#hooks/useScrollListener';
 import { useSyncServerStatus } from '#hooks/useSyncServerStatus';
@@ -41,6 +43,7 @@ export function MobileNavTabs() {
   const syncServerStatus = useSyncServerStatus();
   const isTestEnv = useIsTestEnv();
   const isUsingServer = syncServerStatus !== 'no-server' || isTestEnv;
+  const queryConsoleEnabled = useFeatureFlag('queryConsole');
   const [navbarState, setNavbarState] = useState<'default' | 'open' | 'hidden'>(
     'default',
   );
@@ -117,6 +120,16 @@ export function MobileNavTabs() {
       style: navTabStyle,
       Icon: SvgReports,
     },
+    ...(queryConsoleEnabled
+      ? [
+          {
+            name: t('Query'),
+            path: '/query',
+            style: navTabStyle,
+            Icon: SvgCode,
+          },
+        ]
+      : []),
     {
       name: t('Schedules'),
       path: '/schedules',

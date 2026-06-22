@@ -238,6 +238,9 @@ export function ExperimentalFeatures() {
             >
               <Trans>Enable Banking sync (EU banks)</Trans>
             </FeatureToggle>
+            <FeatureToggle flag="queryConsole">
+              <Trans>Query console (pipeline queries under Reports)</Trans>
+            </FeatureToggle>
             {showServerPrefs && (
               <ServerFeatureToggle
                 prefName="flags.plugins"
