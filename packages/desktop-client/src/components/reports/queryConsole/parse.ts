@@ -356,7 +356,9 @@ class CondParser {
 
   parseCompare(): Condition {
     const fieldTok = this.next();
-    if (fieldTok?.t !== 'ident') {
+    // Allow keyword tokens (e.g. `month`) as field names so that filters like
+    // `filter month >= "2025-01"` parse correctly.
+    if (fieldTok?.t !== 'ident' && fieldTok?.t !== 'kw') {
       throw new QueryParseError('Expected a field name', this.line);
     }
     const field = fieldTok.v;
