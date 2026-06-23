@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { cellsToRows, collectMonthHints, flattenCategories, indexCells, monthRange } from './budgets';
+import {
+  cellsToRows,
+  collectMonthHints,
+  flattenCategories,
+  indexCells,
+  monthRange,
+} from './budgets';
 import type { BudgetCategory } from './budgets';
 import { parseQuery } from './parse';
 

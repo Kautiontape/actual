@@ -23,7 +23,10 @@ const SPENT_BY_MONTH: Record<string, number> = {
 
 beforeEach(() => {
   sendMock.mockReset();
-  sendMock.mockImplementation((async (name: string, args: { month: string }) => {
+  sendMock.mockImplementation((async (
+    name: string,
+    args: { month: string },
+  ) => {
     if (name === 'get-budget-bounds') {
       return { start: '2025-01', end: '2025-03' };
     }
