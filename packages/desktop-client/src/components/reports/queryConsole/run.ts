@@ -250,8 +250,12 @@ function keyName(key: GroupKey): string {
 }
 
 function bucketValue(row: Row, key: GroupKey): unknown {
-  if (key.bucket === 'month') return String(row.date ?? '').slice(0, 7);
-  if (key.bucket === 'year') return String(row.date ?? '').slice(0, 4);
+  // Time buckets read `date` (transactions) or fall back to `month` — the
+  // synthetic `budgets` source has a `month` field (`YYYY-MM`) and no `date`.
+  if (key.bucket === 'month' || key.bucket === 'year') {
+    const src = String(row.date ?? row.month ?? '');
+    return key.bucket === 'month' ? src.slice(0, 7) : src.slice(0, 4);
+  }
   return row[key.field];
 }
 
