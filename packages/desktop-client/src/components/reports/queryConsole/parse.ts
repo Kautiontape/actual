@@ -22,6 +22,7 @@ export const TABLES = [
   'payees',
   'schedules',
   'rules',
+  'budgets',
 ] as const;
 export type Table = (typeof TABLES)[number];
 

@@ -213,6 +213,11 @@ describe('parseQuery', () => {
     );
   });
 
+  it('accepts budgets as a from table', () => {
+    const stages = parseQuery('from budgets');
+    expect(only(stages, 'from')).toEqual({ kind: 'from', table: 'budgets' });
+  });
+
   it('rejects unknown tables and aggregate functions', () => {
     expect(() => parseQuery('from spaceships')).toThrow(/Unknown table/);
     expect(() => parseQuery('aggregate x = bogus amount')).toThrow(
