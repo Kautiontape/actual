@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  cellsToRows,
-  collectMonthHints,
-  flattenCategories,
-  indexCells,
-  monthRange,
-  type BudgetCategory,
-} from './budgets';
+import { cellsToRows, collectMonthHints, flattenCategories, indexCells, monthRange } from './budgets';
+import type { BudgetCategory } from './budgets';
 import { parseQuery } from './parse';
 
 describe('indexCells', () => {
@@ -38,8 +32,20 @@ describe('flattenCategories', () => {
       },
     ]);
     expect(cats).toEqual([
-      { id: 'c1', name: 'Groceries', group: 'Food', isIncome: false, hidden: false },
-      { id: 'c2', name: 'Salary', group: 'Income', isIncome: true, hidden: false },
+      {
+        id: 'c1',
+        name: 'Groceries',
+        group: 'Food',
+        isIncome: false,
+        hidden: false,
+      },
+      {
+        id: 'c2',
+        name: 'Salary',
+        group: 'Income',
+        isIncome: true,
+        hidden: false,
+      },
     ]);
   });
 });
@@ -55,7 +61,12 @@ describe('monthRange', () => {
   it('clamps the default window to a younger budget start', () => {
     const months = monthRange({ start: '2026-01', end: '2026-06' }, {});
     expect(months).toEqual([
-      '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06',
+      '2026-01',
+      '2026-02',
+      '2026-03',
+      '2026-04',
+      '2026-05',
+      '2026-06',
     ]);
   });
 
@@ -68,26 +79,37 @@ describe('monthRange', () => {
   });
 
   it('returns [] when the range is empty', () => {
-    expect(monthRange({ start: '2026-01', end: '2026-06' }, { gte: '2027-01' })).toEqual([]);
+    expect(
+      monthRange({ start: '2026-01', end: '2026-06' }, { gte: '2027-01' }),
+    ).toEqual([]);
   });
 });
 
 describe('collectMonthHints', () => {
   it('extracts gte/lte bounds from month filters', () => {
     const stages = parseQuery(
-      ['from budgets', 'filter month >= "2025-01" and month <= "2025-12"'].join('\n'),
+      ['from budgets', 'filter month >= "2025-01" and month <= "2025-12"'].join(
+        '\n',
+      ),
     );
-    expect(collectMonthHints(stages)).toEqual({ gte: '2025-01', lte: '2025-12' });
+    expect(collectMonthHints(stages)).toEqual({
+      gte: '2025-01',
+      lte: '2025-12',
+    });
   });
 
   it('ignores filters on other fields', () => {
-    const stages = parseQuery(['from budgets', 'filter saturation < 0.8'].join('\n'));
+    const stages = parseQuery(
+      ['from budgets', 'filter saturation < 0.8'].join('\n'),
+    );
     expect(collectMonthHints(stages)).toEqual({});
   });
 
   it('ignores month bounds inside an or (cannot safely narrow)', () => {
     const stages = parseQuery(
-      ['from budgets', 'filter month >= "2025-01" or month <= "2024-06"'].join('\n'),
+      ['from budgets', 'filter month >= "2025-01" or month <= "2024-06"'].join(
+        '\n',
+      ),
     );
     expect(collectMonthHints(stages)).toEqual({});
   });
@@ -95,11 +117,19 @@ describe('collectMonthHints', () => {
 
 describe('cellsToRows', () => {
   const categories: BudgetCategory[] = [
-    { id: 'cat1', name: 'Groceries', group: 'Food', isIncome: false, hidden: false },
+    {
+      id: 'cat1',
+      name: 'Groceries',
+      group: 'Food',
+      isIncome: false,
+      hidden: false,
+    },
   ];
 
   function monthCells(entries: Array<[string, number | boolean]>) {
-    return new Map([['2025-03', new Map<string, number | boolean | null>(entries)]]);
+    return new Map([
+      ['2025-03', new Map<string, number | boolean | null>(entries)],
+    ]);
   }
 
   it('computes budgeted/spent/available/balance/saturation with native sign', () => {

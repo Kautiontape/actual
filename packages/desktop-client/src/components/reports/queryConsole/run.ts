@@ -11,7 +11,6 @@ import { q } from '@actual-app/core/shared/query';
 import { aqlQuery } from '#queries/aqlQuery';
 
 import { loadBudgetRows } from './budgets';
-
 import type {
   Aggregation,
   Condition,

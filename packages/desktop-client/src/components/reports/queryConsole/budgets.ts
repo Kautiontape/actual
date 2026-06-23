@@ -43,7 +43,9 @@ type GroupedCategory = {
   categories: Array<{ id: string; name: string; hidden?: boolean }>;
 };
 
-export function flattenCategories(grouped: GroupedCategory[]): BudgetCategory[] {
+export function flattenCategories(
+  grouped: GroupedCategory[],
+): BudgetCategory[] {
   const out: BudgetCategory[] = [];
   for (const group of grouped) {
     for (const cat of group.categories) {
@@ -183,7 +185,9 @@ export async function loadBudgetRows(
   const categories = flattenCategories(grouped as GroupedCategory[]);
 
   const handler =
-    budgetType === 'tracking' ? 'tracking-budget-month' : 'envelope-budget-month';
+    budgetType === 'tracking'
+      ? 'tracking-budget-month'
+      : 'envelope-budget-month';
 
   const cellsByMonth = new Map<string, Map<string, CellValue>>();
   for (const month of months) {
