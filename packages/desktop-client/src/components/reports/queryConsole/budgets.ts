@@ -3,6 +3,7 @@
 // (category, month) by reading Actual's budget-month spreadsheet values
 // (which already chain carryover rollover) — see run.ts for how it plugs into
 // the pipeline.
+import { send } from '@actual-app/core/platform/client/connection';
 import * as monthUtils from '@actual-app/core/shared/months';
 
 import type { Condition, Stage, Value } from './parse';
@@ -165,4 +166,30 @@ export function cellsToRows(
     }
   }
   return rows;
+}
+
+// Fetch budget rows for the months implied by the query. One handler call per
+// month returns every category's cells at once; the leftover cell already
+// includes carryover from prior months.
+export async function loadBudgetRows(
+  stages: Stage[],
+  budgetType: string = 'envelope',
+): Promise<Row[]> {
+  const bounds: BudgetBounds = await send('get-budget-bounds');
+  const months = monthRange(bounds, collectMonthHints(stages));
+  if (months.length === 0) return [];
+
+  const { grouped } = await send('get-categories');
+  const categories = flattenCategories(grouped as GroupedCategory[]);
+
+  const handler =
+    budgetType === 'tracking' ? 'tracking-budget-month' : 'envelope-budget-month';
+
+  const cellsByMonth = new Map<string, Map<string, CellValue>>();
+  for (const month of months) {
+    const cells: Cell[] = (await send(handler, { month })) as Cell[];
+    cellsByMonth.set(month, indexCells(cells));
+  }
+
+  return cellsToRows(months, cellsByMonth, categories);
 }
