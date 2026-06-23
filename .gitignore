@@ -95,3 +95,7 @@ storybook-static
 .actualrc.yaml
 .actualrc.yml
 actual.config.js
+
+# local agent/tool scratch output
+.playwright-mcp/
+/docs/superpowers/
