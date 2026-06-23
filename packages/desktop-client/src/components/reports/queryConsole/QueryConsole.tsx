@@ -10,6 +10,7 @@ import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import { MobilePageHeader, Page, PageHeader } from '#components/Page';
+import { useSyncedPref } from '#hooks/useSyncedPref';
 
 import { parseQuery, QueryParseError } from './parse';
 import { QueryEditor } from './QueryEditor';
@@ -92,6 +93,7 @@ function toDelimited(columns: string[], rows: Row[], sep: string): string {
 export function QueryConsole() {
   const { t } = useTranslation();
   const { isNarrowWidth } = useResponsive();
+  const [budgetType = 'envelope'] = useSyncedPref('budgetType');
 
   const [text, setText] = useState(scratch.text);
   const [result, setResult] = useState<QueryResult | null>(null);
@@ -181,6 +183,14 @@ export function QueryConsole() {
         'select month, spend, avg_txn, n',
       ].join('\n'),
     },
+    {
+      label: t('Budget categories under 80% used'),
+      query: [
+        'from budgets',
+        'filter available > 0 and saturation < 0.8',
+        'sort saturation',
+      ].join('\n'),
+    },
   ];
 
   function onChangeText(value: string) {
@@ -193,7 +203,7 @@ export function QueryConsole() {
     setError(null);
     try {
       const stages = parseQuery(text);
-      const res = await runQuery(stages);
+      const res = await runQuery(stages, { budgetType });
       setResult(res);
     } catch (e) {
       setResult(null);
