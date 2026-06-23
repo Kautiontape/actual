@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
@@ -30,6 +31,36 @@ type Example = { label: string; query: string };
 // In-memory scratchpad: survives navigating away and back during a session,
 // but is intentionally cleared on a full reload.
 const scratch: { text: string } = { text: DEFAULT_QUERY };
+
+// Resizable editor: the code window keeps a modest default height so the
+// results table gets the bulk of the space, and the user can drag the handle
+// below it to grow it up to half of the console. The chosen height is
+// remembered across reloads.
+const MIN_EDITOR_HEIGHT = 120;
+const DEFAULT_EDITOR_HEIGHT = 220;
+const EDITOR_HEIGHT_KEY = 'queryConsole.editorHeight';
+
+function clamp(value: number, low: number, high: number): number {
+  return Math.min(Math.max(value, low), high);
+}
+
+function readStoredEditorHeight(): number {
+  try {
+    const raw = localStorage.getItem(EDITOR_HEIGHT_KEY);
+    const parsed = raw == null ? NaN : Number(raw);
+    return Number.isFinite(parsed) ? parsed : DEFAULT_EDITOR_HEIGHT;
+  } catch {
+    return DEFAULT_EDITOR_HEIGHT;
+  }
+}
+
+function storeEditorHeight(value: number) {
+  try {
+    localStorage.setItem(EDITOR_HEIGHT_KEY, String(Math.round(value)));
+  } catch {
+    // Ignore storage failures (private mode, quota, etc.).
+  }
+}
 
 function formatCell(value: unknown): { text: string; numeric: boolean } {
   if (value == null || value === '') return { text: '', numeric: false };
@@ -66,6 +97,40 @@ export function QueryConsole() {
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [editorHeight, setEditorHeight] = useState(readStoredEditorHeight);
+  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+
+  function maxEditorHeight() {
+    const available = containerRef.current?.clientHeight ?? 0;
+    // Cap the code window at ~half the console so results always have room.
+    return Math.max(MIN_EDITOR_HEIGHT, available * 0.5);
+  }
+
+  function onResizeStart(e: ReactPointerEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = { startY: e.clientY, startHeight: editorHeight };
+  }
+
+  function onResizeMove(e: ReactPointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const next = clamp(
+      drag.startHeight + (e.clientY - drag.startY),
+      MIN_EDITOR_HEIGHT,
+      maxEditorHeight(),
+    );
+    setEditorHeight(next);
+  }
+
+  function onResizeEnd(e: ReactPointerEvent<HTMLDivElement>) {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    storeEditorHeight(editorHeight);
+  }
 
   const examples: Example[] = [
     {
@@ -183,6 +248,7 @@ export function QueryConsole() {
       padding={0}
     >
       <View
+        innerRef={containerRef}
         style={{
           flexDirection: 'column',
           padding: 15,
@@ -219,7 +285,43 @@ export function QueryConsole() {
           ))}
         </View>
 
-        <QueryEditor value={text} onChange={onChangeText} onSubmit={onRun} />
+        <View
+          style={{
+            height: editorHeight,
+            minHeight: MIN_EDITOR_HEIGHT,
+            flexShrink: 0,
+          }}
+        >
+          <QueryEditor value={text} onChange={onChangeText} onSubmit={onRun} />
+        </View>
+
+        <View
+          onPointerDown={onResizeStart}
+          onPointerMove={onResizeMove}
+          onPointerUp={onResizeEnd}
+          onPointerCancel={onResizeEnd}
+          aria-label={t('Resize the query editor')}
+          style={{
+            height: 10,
+            marginTop: -6,
+            marginBottom: -6,
+            flexShrink: 0,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'row-resize',
+            touchAction: 'none',
+          }}
+        >
+          <View
+            style={{
+              width: 40,
+              height: 3,
+              borderRadius: 2,
+              background: theme.tableBorder,
+            }}
+          />
+        </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Button

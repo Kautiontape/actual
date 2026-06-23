@@ -3,8 +3,16 @@
 // diagnostics (reusing the same `parseQuery` the executor runs).
 
 import { autocompletion } from '@codemirror/autocomplete';
-import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import { HighlightStyle, StreamLanguage, syntaxHighlighting } from '@codemirror/language';
+import type {
+  Completion,
+  CompletionContext,
+  CompletionResult,
+} from '@codemirror/autocomplete';
+import {
+  HighlightStyle,
+  StreamLanguage,
+  syntaxHighlighting,
+} from '@codemirror/language';
 import type { StreamParser } from '@codemirror/language';
 import { linter, lintGutter } from '@codemirror/lint';
 import type { Diagnostic } from '@codemirror/lint';

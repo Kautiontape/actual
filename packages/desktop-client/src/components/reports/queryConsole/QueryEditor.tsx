@@ -61,8 +61,9 @@ export function QueryEditor({ value, onChange, onSubmit }: QueryEditorProps) {
   return (
     <CodeMirror
       value={value}
-      minHeight="170px"
-      maxHeight="420px"
+      // Fill the (resizable) wrapper supplied by the parent; the editor scrolls
+      // internally when the query is taller than the available space.
+      height="100%"
       theme={codeMirrorTheme}
       extensions={extensions}
       onChange={onChange}
@@ -73,6 +74,7 @@ export function QueryEditor({ value, onChange, onSubmit }: QueryEditorProps) {
         highlightActiveLineGutter: false,
       }}
       style={{
+        height: '100%',
         fontSize: '13px',
         border: `1px solid ${theme.tableBorder}`,
         borderRadius: 6,
