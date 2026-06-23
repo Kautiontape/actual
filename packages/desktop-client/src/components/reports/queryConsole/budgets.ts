@@ -95,12 +95,15 @@ export function collectMonthHints(stages: Stage[]): MonthHints {
   const walk = (cond: Condition) => {
     switch (cond.kind) {
       case 'and':
-      case 'or':
         walk(cond.left);
         walk(cond.right);
         return;
+      // A month bound inside `or`/`not` doesn't constrain the whole result set,
+      // so we must not narrow the fetch window from it. Skip these branches and
+      // fall back to the default window; the client-side filter stays
+      // authoritative.
+      case 'or':
       case 'not':
-        walk(cond.cond);
         return;
       case 'compare': {
         if (cond.field !== 'month') return;

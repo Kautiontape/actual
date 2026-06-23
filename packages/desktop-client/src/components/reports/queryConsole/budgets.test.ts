@@ -84,6 +84,13 @@ describe('collectMonthHints', () => {
     const stages = parseQuery(['from budgets', 'filter saturation < 0.8'].join('\n'));
     expect(collectMonthHints(stages)).toEqual({});
   });
+
+  it('ignores month bounds inside an or (cannot safely narrow)', () => {
+    const stages = parseQuery(
+      ['from budgets', 'filter month >= "2025-01" or month <= "2024-06"'].join('\n'),
+    );
+    expect(collectMonthHints(stages)).toEqual({});
+  });
 });
 
 describe('cellsToRows', () => {
@@ -158,6 +165,8 @@ describe('cellsToRows', () => {
       budgeted: 0,
       spent: 0,
       available: 0,
+      balance: 0,
+      carryover: false,
       goal: null,
       saturation: null,
     });

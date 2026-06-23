@@ -234,4 +234,15 @@ describe('parseQuery', () => {
       expect((e as QueryParseError).line).toBe(2);
     }
   });
+
+  it('allows keyword tokens as field names in filters', () => {
+    const stages = parseQuery('from budgets\nfilter month >= "2025-01"');
+    const filter = only(stages, 'filter');
+    expect(filter.cond).toEqual({
+      kind: 'compare',
+      field: 'month',
+      op: '>=',
+      values: [{ type: 'string', value: '2025-01' }],
+    });
+  });
 });
