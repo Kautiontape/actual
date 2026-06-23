@@ -10,6 +10,8 @@ import { q } from '@actual-app/core/shared/query';
 
 import { aqlQuery } from '#queries/aqlQuery';
 
+import { loadBudgetRows } from './budgets';
+
 import type {
   Aggregation,
   Condition,
@@ -207,6 +209,20 @@ function defaultSelect(table: Table): Array<string | Record<string, string>> {
 function displayColumns(table: Table, rows: Row[]): string[] {
   if (table === 'transactions') {
     return ['date', 'payee', 'category', 'account', 'amount', 'notes'];
+  }
+  if (table === 'budgets') {
+    return [
+      'month',
+      'category',
+      'group',
+      'budgeted',
+      'spent',
+      'available',
+      'balance',
+      'carryover',
+      'goal',
+      'saturation',
+    ];
   }
   return rows.length > 0 ? Object.keys(rows[0]) : [];
 }
@@ -513,7 +529,10 @@ function forecastRows(
 
 // --- main ------------------------------------------------------------------
 
-export async function runQuery(stages: Stage[]): Promise<QueryResult> {
+export async function runQuery(
+  stages: Stage[],
+  opts: { budgetType?: string } = {},
+): Promise<QueryResult> {
   const start =
     typeof performance !== 'undefined' ? performance.now() : Date.now();
 
@@ -533,61 +552,77 @@ export async function runQuery(stages: Stage[]): Promise<QueryResult> {
   const forecastStage = stages.find(s => s.kind === 'forecast');
 
   const grouped = !!(groupStage || aggStage);
-
-  // Build the ActualQL query (positive, pushable filters).
-  let query = q(table);
-  const clientPreds: Array<(r: Row) => boolean> = [];
-
-  for (const f of filterStages) {
-    if (isPushable(f.cond)) {
-      query = query.filter(condToAql(f.cond, table));
-    } else {
-      clientPreds.push(r => evalCond(r, f.cond));
-    }
-  }
-  for (const ex of excludeStages) {
-    clientPreds.push(r => !evalCond(r, ex.cond));
-  }
-
-  query = query.select(defaultSelect(table));
-
-  // For raw (ungrouped) queries with no client-side post-processing, push the
-  // sort + limit down to SQL. Otherwise we fetch the filtered rows and do the
-  // remaining work (derive/having/sort/select/take) in JS.
-  const PUSHABLE_SORT_FIELDS = new Set([
-    'date',
-    'amount',
-    'notes',
-    'id',
-    'cleared',
-    'reconciled',
-    'payee',
-    'category',
-    'account',
-  ]);
-  const rawPostProcess =
-    deriveStages.length > 0 || !!havingStage || !!selectStage;
-  const canPushRaw =
-    !grouped &&
-    clientPreds.length === 0 &&
-    !rawPostProcess &&
-    (!sortStage || PUSHABLE_SORT_FIELDS.has(sortStage.key));
   const rawLimit = takeStage ? takeStage.n : DEFAULT_RAW_LIMIT;
 
-  if (canPushRaw) {
-    if (sortStage) {
-      query = query.orderBy({
-        [aqlField(table, sortStage.key)]: sortStage.dir,
-      });
+  let rows: Row[];
+  let sortPushed = false;
+
+  if (table === 'budgets') {
+    // Synthetic source: no SQL, so every filter/exclude runs client-side.
+    rows = await loadBudgetRows(stages, opts.budgetType);
+    const preds: Array<(r: Row) => boolean> = [
+      ...filterStages.map(f => (r: Row) => evalCond(r, f.cond)),
+      ...excludeStages.map(ex => (r: Row) => !evalCond(r, ex.cond)),
+    ];
+    if (preds.length) {
+      rows = rows.filter(r => preds.every(p => p(r)));
     }
-    query = query.limit(rawLimit + 1);
-  }
+  } else {
+    // Build the ActualQL query (positive, pushable filters).
+    let query = q(table);
+    const clientPreds: Array<(r: Row) => boolean> = [];
 
-  const { data } = await aqlQuery(query);
-  let rows: Row[] = (data as Row[]).map(r => normalizeRow(r, table));
+    for (const f of filterStages) {
+      if (isPushable(f.cond)) {
+        query = query.filter(condToAql(f.cond, table));
+      } else {
+        clientPreds.push(r => evalCond(r, f.cond));
+      }
+    }
+    for (const ex of excludeStages) {
+      clientPreds.push(r => !evalCond(r, ex.cond));
+    }
 
-  if (clientPreds.length) {
-    rows = rows.filter(r => clientPreds.every(p => p(r)));
+    query = query.select(defaultSelect(table));
+
+    // For raw (ungrouped) queries with no client-side post-processing, push the
+    // sort + limit down to SQL. Otherwise we fetch the filtered rows and do the
+    // remaining work (derive/having/sort/select/take) in JS.
+    const PUSHABLE_SORT_FIELDS = new Set([
+      'date',
+      'amount',
+      'notes',
+      'id',
+      'cleared',
+      'reconciled',
+      'payee',
+      'category',
+      'account',
+    ]);
+    const rawPostProcess =
+      deriveStages.length > 0 || !!havingStage || !!selectStage;
+    const canPushRaw =
+      !grouped &&
+      clientPreds.length === 0 &&
+      !rawPostProcess &&
+      (!sortStage || PUSHABLE_SORT_FIELDS.has(sortStage.key));
+
+    if (canPushRaw) {
+      if (sortStage) {
+        query = query.orderBy({
+          [aqlField(table, sortStage.key)]: sortStage.dir,
+        });
+      }
+      query = query.limit(rawLimit + 1);
+    }
+    sortPushed = canPushRaw;
+
+    const { data } = await aqlQuery(query);
+    rows = (data as Row[]).map(r => normalizeRow(r, table));
+
+    if (clientPreds.length) {
+      rows = rows.filter(r => clientPreds.every(p => p(r)));
+    }
   }
 
   let columns: string[];
@@ -656,7 +691,7 @@ export async function runQuery(stages: Stage[]): Promise<QueryResult> {
       rows = rows.filter(r => evalCond(r, havingStage.cond));
     }
 
-    if (sortStage && !canPushRaw) {
+    if (sortStage && !sortPushed) {
       sortRows(rows, sortStage.key, sortStage.dir);
     }
 
