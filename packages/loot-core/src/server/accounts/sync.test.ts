@@ -633,6 +633,79 @@ describe('Account sync', () => {
       expect(transactions[0].amount).toBe(-1239);
     },
   );
+
+  test(
+    'given a bank sync batch containing both a pending authorization and its ' +
+      'booked counterpart (same amount, payee, and date within the window), ' +
+      'then only the booked transaction is kept',
+    async () => {
+      const { id: acctId } = await prepareDatabase();
+
+      await reconcileTransactions(
+        acctId,
+        [
+          {
+            booked: true,
+            transactionId: 'patreon-posted',
+            date: '2017-10-12',
+            payeeName: 'Patreon',
+            notes: 'Patreon* Membership Internet Ca',
+            amount: -10.59,
+          },
+          {
+            booked: false,
+            transactionId: 'patreon-auth',
+            date: '2017-10-12',
+            payeeName: 'Patreon',
+            notes: 'Auth : Patreon* Membership',
+            amount: -10.59,
+          },
+        ],
+        true, // isBankSyncAccount
+        false, // strictIdChecking — bank sync accounts disable strict id checking
+      );
+
+      const transactions = await getAllTransactions();
+      expect(transactions.length).toBe(1);
+      expect(transactions[0].cleared).toBe(1);
+      expect(transactions[0].imported_id).toBe('patreon-posted');
+    },
+  );
+
+  test(
+    'given a bank sync batch with a pending and a booked transaction of the ' +
+      'same amount but different payees, then both are kept',
+    async () => {
+      const { id: acctId } = await prepareDatabase();
+
+      await reconcileTransactions(
+        acctId,
+        [
+          {
+            booked: true,
+            transactionId: 'netflix-posted',
+            date: '2017-10-12',
+            payeeName: 'Netflix',
+            notes: 'Netflix',
+            amount: -10.59,
+          },
+          {
+            booked: false,
+            transactionId: 'patreon-auth',
+            date: '2017-10-12',
+            payeeName: 'Patreon',
+            notes: 'Auth : Patreon* Membership',
+            amount: -10.59,
+          },
+        ],
+        true, // isBankSyncAccount
+        false, // strictIdChecking
+      );
+
+      const transactions = await getAllTransactions();
+      expect(transactions.length).toBe(2);
+    },
+  );
 });
 
 describe('SimpleFin batch sync', () => {
