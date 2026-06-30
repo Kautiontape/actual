@@ -30,10 +30,7 @@ import { useSyncServerStatus } from '#hooks/useSyncServerStatus';
 const COLUMN_COUNT = 3;
 const PILL_HEIGHT = 15;
 const ROW_HEIGHT = 70;
-const TOTAL_HEIGHT = ROW_HEIGHT * COLUMN_COUNT;
 const OPEN_FULL_Y = 1;
-const OPEN_DEFAULT_Y = TOTAL_HEIGHT - ROW_HEIGHT;
-const HIDDEN_Y = TOTAL_HEIGHT;
 
 export const MOBILE_NAV_HEIGHT = ROW_HEIGHT + PILL_HEIGHT;
 
@@ -55,47 +52,7 @@ export function MobileNavTabs() {
     maxWidth: `${100 / COLUMN_COUNT}%`,
   };
 
-  const [{ y }, api] = useSpring(() => ({ from: { y: OPEN_DEFAULT_Y } }), []);
-
-  const openFull = useCallback(
-    ({ canceled }: { canceled?: boolean }) => {
-      // when cancel is true, it means that the user passed the upwards threshold
-      // so we change the spring config to create a nice wobbly effect
-      setNavbarState('open');
-      void api.start({
-        to: { y: OPEN_FULL_Y },
-        immediate: isTestEnv,
-        config: canceled ? config.wobbly : config.stiff,
-      });
-    },
-    [api, isTestEnv],
-  );
-
-  const openDefault = useCallback(
-    (velocity = 0) => {
-      setNavbarState('default');
-      void api.start({
-        to: { y: OPEN_DEFAULT_Y },
-        immediate: isTestEnv,
-        config: { ...config.stiff, velocity },
-      });
-    },
-    [api, isTestEnv],
-  );
-
-  const hide = useCallback(
-    (velocity = 0) => {
-      setNavbarState('hidden');
-      void api.start({
-        to: { y: HIDDEN_Y },
-        immediate: isTestEnv,
-        config: { ...config.stiff, velocity },
-      });
-    },
-    [api, isTestEnv],
-  );
-
-  const navTabs = [
+  const navItems = [
     {
       name: t('Budget'),
       path: '/budget',
@@ -164,11 +121,62 @@ export function MobileNavTabs() {
       style: navTabStyle,
       Icon: SvgCog,
     },
-  ].map(tab => (
+  ];
+
+  // Grow the sheet's height to fit however many rows the tabs need, so
+  // optional tabs (e.g. Query, Bank Sync) never push later tabs like
+  // Settings out of view.
+  const rowCount = Math.max(1, Math.ceil(navItems.length / COLUMN_COUNT));
+  const totalHeight = ROW_HEIGHT * rowCount;
+  const openDefaultY = totalHeight - ROW_HEIGHT;
+  const hiddenY = totalHeight;
+
+  const [{ y }, api] = useSpring(() => ({ from: { y: openDefaultY } }), []);
+
+  const openFull = useCallback(
+    ({ canceled }: { canceled?: boolean }) => {
+      // when cancel is true, it means that the user passed the upwards threshold
+      // so we change the spring config to create a nice wobbly effect
+      setNavbarState('open');
+      void api.start({
+        to: { y: OPEN_FULL_Y },
+        immediate: isTestEnv,
+        config: canceled ? config.wobbly : config.stiff,
+      });
+    },
+    [api, isTestEnv],
+  );
+
+  const openDefault = useCallback(
+    (velocity = 0) => {
+      setNavbarState('default');
+      void api.start({
+        to: { y: openDefaultY },
+        immediate: isTestEnv,
+        config: { ...config.stiff, velocity },
+      });
+    },
+    [api, isTestEnv, openDefaultY],
+  );
+
+  const hide = useCallback(
+    (velocity = 0) => {
+      setNavbarState('hidden');
+      void api.start({
+        to: { y: hiddenY },
+        immediate: isTestEnv,
+        config: { ...config.stiff, velocity },
+      });
+    },
+    [api, isTestEnv, hiddenY],
+  );
+
+  const navTabs = navItems.map(tab => (
     <NavTab key={tab.path} onClick={() => openDefault()} {...tab} />
   ));
 
-  const bufferTabsCount = COLUMN_COUNT - (navTabs.length % COLUMN_COUNT);
+  const bufferTabsCount =
+    (COLUMN_COUNT - (navItems.length % COLUMN_COUNT)) % COLUMN_COUNT;
   const bufferTabs = Array.from({ length: bufferTabsCount }).map((_, idx) => (
     <div key={idx} style={navTabStyle} />
   ));
@@ -218,7 +226,7 @@ export function MobileNavTabs() {
     {
       from: () => [0, y.get()],
       filterTaps: true,
-      bounds: { top: -TOTAL_HEIGHT, bottom: TOTAL_HEIGHT - ROW_HEIGHT },
+      bounds: { top: -totalHeight, bottom: totalHeight - ROW_HEIGHT },
       axis: 'y',
       rubberband: true,
     },
@@ -234,7 +242,7 @@ export function MobileNavTabs() {
         backgroundColor: theme.mobileNavBackground,
         borderTop: `1px solid ${theme.menuBorder}`,
         ...styles.shadow,
-        height: TOTAL_HEIGHT + PILL_HEIGHT,
+        height: totalHeight + PILL_HEIGHT,
         width: '100%',
         position: 'fixed',
         zIndex: 100,
@@ -259,7 +267,7 @@ export function MobileNavTabs() {
           style={{
             flexDirection: 'row',
             flexWrap: 'wrap',
-            height: TOTAL_HEIGHT,
+            height: totalHeight,
             width: '100%',
           }}
         >
