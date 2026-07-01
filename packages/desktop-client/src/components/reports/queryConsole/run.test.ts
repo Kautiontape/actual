@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@actual-app/core/platform/client/connection', () => ({
-  send: vi.fn(),
-}));
-
 import { send } from '@actual-app/core/platform/client/connection';
 
 import { parseQuery } from './parse';
 import { runQuery } from './run';
+
+vi.mock('@actual-app/core/platform/client/connection', () => ({
+  send: vi.fn(),
+}));
 
 const sendMock = vi.mocked(send);
 

@@ -13,6 +13,10 @@ name: Compare Sizes
 
 on:
   pull_request_target:
+    # Skip on PRs targeting the ktn fork branch; size comparison against the
+    # upstream base is not meaningful for the Kautiontape fork.
+    branches-ignore:
+      - ktn
     paths:
       - 'packages/**'
       - 'package.json'

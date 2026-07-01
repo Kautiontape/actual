@@ -2,6 +2,10 @@ name: E2E Tests
 
 on:
   pull_request:
+    # Skip on PRs targeting the ktn fork branch; VRT baselines are not
+    # maintained on the Kautiontape fork, so these checks are noise here.
+    branches-ignore:
+      - ktn
     paths:
       - 'packages/**'
       - 'package.json'

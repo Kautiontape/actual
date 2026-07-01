@@ -2,6 +2,10 @@ name: Release notes
 
 on:
   pull_request:
+    # Skip on PRs targeting the ktn fork branch; this is an upstream-only
+    # convention check that does not apply to the Kautiontape fork.
+    branches-ignore:
+      - ktn
   push:
     branches:
       - release
