@@ -37,6 +37,8 @@ export const AGG_FNS = [
   'min',
   'max',
   'stddev',
+  'first',
+  'last',
 ] as const;
 export type AggFn = (typeof AGG_FNS)[number];
 
@@ -87,7 +89,14 @@ export type Condition =
 
 export type GroupKey = { field: string; bucket?: 'month' | 'year' };
 
-export type Aggregation = { name: string; fn: AggFn; arg?: string };
+export type Aggregation = {
+  name: string;
+  fn: AggFn;
+  arg?: string;
+  // Optional per-aggregate `where` clause — restricts the group's rows before
+  // the function runs, so one query can mix filtered and unfiltered aggregates.
+  filter?: Condition;
+};
 
 // Arithmetic expression AST, used by `derive`.
 export type Expr =
@@ -735,9 +744,40 @@ function parseGroup(rest: string, line: number): Stage {
   return { kind: 'group', keys };
 }
 
+// Split on `sep` only at the top level — not inside quotes or parentheses — so
+// commas in a `where` condition's `in (...)` list don't split the aggregates.
+function splitTopLevel(input: string, sep: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let quote: string | null = null;
+  let current = '';
+  for (let i = 0; i < input.length; i++) {
+    const c = input[i];
+    if (quote) {
+      current += c;
+      if (c === quote) quote = null;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+      current += c;
+    } else if (c === '(') {
+      depth++;
+      current += c;
+    } else if (c === ')') {
+      depth = Math.max(0, depth - 1);
+      current += c;
+    } else if (c === sep && depth === 0) {
+      parts.push(current);
+      current = '';
+    } else {
+      current += c;
+    }
+  }
+  parts.push(current);
+  return parts;
+}
+
 function parseAggregate(rest: string, line: number): Stage {
-  const aggs: Aggregation[] = rest
-    .split(',')
+  const aggs: Aggregation[] = splitTopLevel(rest, ',')
     .map(s => s.trim())
     .filter(Boolean)
     .map(part => {
@@ -749,17 +789,28 @@ function parseAggregate(rest: string, line: number): Stage {
         );
       }
       const name = part.slice(0, eq).trim();
-      const expr = part
-        .slice(eq + 1)
-        .trim()
-        .split(/\s+/);
+      let exprText = part.slice(eq + 1).trim();
+
+      // Optional per-aggregate `where <condition>` restricts the group's rows
+      // before the function runs, e.g. `first amount where amount > 0`.
+      let filter: Condition | undefined;
+      const whereMatch = /\s+where\s+/i.exec(exprText);
+      if (whereMatch) {
+        const condText = exprText
+          .slice(whereMatch.index + whereMatch[0].length)
+          .trim();
+        exprText = exprText.slice(0, whereMatch.index).trim();
+        filter = parseCondition(condText, line);
+      }
+
+      const expr = exprText.split(/\s+/);
       const fn = expr[0] as AggFn;
       if (!AGG_FNS.includes(fn)) {
         throw new QueryParseError(`Unknown aggregate function "${fn}"`, line);
       }
       const arg = expr[1];
       if (fn === 'count' && !arg) {
-        return { name, fn };
+        return filter ? { name, fn, filter } : { name, fn };
       }
       if (!arg) {
         throw new QueryParseError(
@@ -767,7 +818,7 @@ function parseAggregate(rest: string, line: number): Stage {
           line,
         );
       }
-      return { name, fn, arg };
+      return filter ? { name, fn, arg, filter } : { name, fn, arg };
     });
   if (aggs.length === 0) {
     throw new QueryParseError(
