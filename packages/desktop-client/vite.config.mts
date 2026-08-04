@@ -317,6 +317,7 @@ export default defineConfig(async ({ mode, command }) => {
     },
     server: {
       host: true,
+      allowedHosts: ['.lhr.kautiontape.com'],
       headers: devHeaders,
       port: +env.PORT || 5173,
       open: env.BROWSER
