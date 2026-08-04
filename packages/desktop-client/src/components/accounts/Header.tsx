@@ -390,7 +390,7 @@ export function AccountHeader({
           )}
 
           {!showEmptyMessage && (
-            <Button variant="bare" onPress={onAddTransaction}>
+            <Button variant="bare" onPress={() => onAddTransaction()}>
               <SvgAdd width={10} height={10} style={{ marginRight: 3 }} />
               <Trans>Add New</Trans>
             </Button>
