@@ -241,6 +241,8 @@ function calculateFutureTransactionInfo(
 type TransactionListProps = Pick<
   TransactionTableProps,
   | 'accounts'
+  | 'addTransactionSeed'
+  | 'addTransactionFocusField'
   | 'allowSplitTransaction'
   | 'ascDesc'
   | 'balances'
@@ -303,6 +305,8 @@ export function TransactionList({
   showCleared,
   showAccount,
   isAdding,
+  addTransactionSeed,
+  addTransactionFocusField,
   isNew,
   isMatched,
   isFiltered,
@@ -744,6 +748,8 @@ export function TransactionList({
         currentAccountId={account && account.id}
         currentCategoryId={category && category.id}
         isAdding={isAdding}
+        addTransactionSeed={addTransactionSeed}
+        addTransactionFocusField={addTransactionFocusField}
         isNew={isNew}
         isMatched={isMatched}
         dateFormat={dateFormat}

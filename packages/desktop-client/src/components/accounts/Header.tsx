@@ -8,6 +8,7 @@ import { Button } from '@actual-app/components/button';
 import { AnimatedLoading } from '@actual-app/components/icons/AnimatedLoading';
 import {
   SvgAdd,
+  SvgCreditCard,
   SvgDotsHorizontalTriple,
   SvgEquals,
 } from '@actual-app/components/icons/v1';
@@ -48,6 +49,7 @@ import { SelectedTransactionsButton } from '#components/transactions/SelectedTra
 import { useDateFormat } from '#hooks/useDateFormat';
 import { useLocale } from '#hooks/useLocale';
 import { useLocalPref } from '#hooks/useLocalPref';
+import { useSheetValue } from '#hooks/useSheetValue';
 import { useSplitsExpanded } from '#hooks/useSplitsExpanded';
 import { useSyncedPref } from '#hooks/useSyncedPref';
 import { useSyncServerStatus } from '#hooks/useSyncServerStatus';
@@ -85,6 +87,7 @@ type AccountHeaderProps = {
   filterConditionsOp: 'and' | 'or';
   onSearch: (newSearch: string) => void;
   onAddTransaction: () => void;
+  onRecordPayment: () => void;
   onShowTransactions: ComponentProps<
     typeof SelectedTransactionsButton
   >['onShow'];
@@ -166,6 +169,7 @@ export function AccountHeader({
   filterConditionsOp,
   onSearch,
   onAddTransaction,
+  onRecordPayment,
   onShowTransactions,
   onDoneReconciling,
   onCreateReconciliationTransaction,
@@ -215,6 +219,17 @@ export function AccountHeader({
     `hide-scheduled-${accountId}`,
   );
   const hideScheduled = hideScheduledPref === 'true';
+
+  const accountBalance =
+    useSheetValue<'balance', `balance-query-${string}`>({
+      name: balanceQuery.name,
+      value: 0,
+      query: balanceQuery.query,
+    }) ?? 0;
+  // "Record Payment" only makes sense for an on-budget liability you owe on
+  // (a credit card): on-budget account with a negative balance.
+  const showRecordPayment =
+    account != null && account.offbudget === 0 && accountBalance < 0;
 
   const dateFormat = useDateFormat() || 'MM/dd/yyyy';
   const locale = useLocale();
@@ -384,6 +399,16 @@ export function AccountHeader({
             <Button variant="bare" onPress={onAddTransaction}>
               <SvgAdd width={10} height={10} style={{ marginRight: 3 }} />
               <Trans>Add New</Trans>
+            </Button>
+          )}
+          {!showEmptyMessage && showRecordPayment && (
+            <Button variant="bare" onPress={onRecordPayment}>
+              <SvgCreditCard
+                width={12}
+                height={12}
+                style={{ marginRight: 3 }}
+              />
+              <Trans>Record Payment</Trans>
             </Button>
           )}
           <View style={{ flexShrink: 0 }}>
@@ -814,7 +839,8 @@ type AccountMenuProps = {
       | 'remove-sorting'
       | 'toggle-cleared'
       | 'toggle-reconciled'
-      | 'toggle-net-worth-chart',
+      | 'toggle-net-worth-chart'
+      | 'change-payment-source',
   ) => void;
 };
 
@@ -905,6 +931,14 @@ function AccountMenu({
               ? t('Include in net worth')
               : t('Exclude from net worth'),
         },
+        ...(account && account.offbudget === 0
+          ? [
+              {
+                name: 'change-payment-source',
+                text: t('Change payment account…'),
+              } as const,
+            ]
+          : []),
         { name: 'export', text: t('Export') },
         ...(account && !account.closed
           ? canSync

@@ -35,6 +35,7 @@ export type SyncedPrefs = Partial<
     | `hide-reconciled-${string}`
     | `hide-scheduled-${string}`
     | `exclude-from-net-worth-${string}`
+    | `payment-source-${string}`
     // TODO: pull from src/components/modals/ImportTransactions.js
     | `parse-date-${string}-${'csv' | 'qif'}`
     | `import-reimport-deleted-${string}`
