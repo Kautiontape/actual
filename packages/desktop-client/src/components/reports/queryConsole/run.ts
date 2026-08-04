@@ -47,6 +47,10 @@ function aqlField(table: Table, field: string): string {
     if (field === 'offbudget' || field === 'onbudget') {
       return 'account.offbudget';
     }
+    // `open`/`closed` are the account's `closed` flag (`open` is the inverse).
+    if (field === 'open' || field === 'closed') {
+      return 'account.closed';
+    }
   }
   return field;
 }
@@ -57,6 +61,10 @@ function aqlValue(field: string, v: Value): unknown {
   }
   // `onbudget` is the logical inverse of the stored `offbudget` flag.
   if (field === 'onbudget' && v.type === 'bool') {
+    return !v.value;
+  }
+  // `open` is the logical inverse of the stored `closed` flag.
+  if (field === 'open' && v.type === 'bool') {
     return !v.value;
   }
   return v.value;
@@ -200,6 +208,7 @@ function defaultSelect(table: Table): Array<string | Record<string, string>> {
       { category: 'category.name' },
       { account: 'account.name' },
       { offbudget: 'account.offbudget' },
+      { closed: 'account.closed' },
     ];
   }
   return ['*'];
@@ -240,6 +249,8 @@ function normalizeRow(r: Row, table: Table): Row {
     reconciled: r.reconciled,
     offbudget: r.offbudget,
     onbudget: r.offbudget == null ? null : !r.offbudget,
+    closed: r.closed,
+    open: r.closed == null ? null : !r.closed,
   };
 }
 
@@ -264,10 +275,17 @@ function numericValues(rows: Row[], arg?: string): number[] {
   return rows.map(r => Number(r[arg])).filter(v => !Number.isNaN(v));
 }
 
-function reduce(fn: Aggregation['fn'], rows: Row[], arg?: string): number {
+function reduce(fn: Aggregation['fn'], rows: Row[], arg?: string): unknown {
   if (fn === 'count') return rows.length;
   if (fn === 'count_distinct') {
     return new Set(rows.map(r => r[arg])).size;
+  }
+  // `first`/`last` return the raw value (e.g. a date string) from the first or
+  // last row of the group in its current order. Pair with `sort` before
+  // `group` to control which row that is.
+  if (fn === 'first') return rows.length > 0 && arg ? rows[0][arg] : null;
+  if (fn === 'last') {
+    return rows.length > 0 && arg ? rows[rows.length - 1][arg] : null;
   }
   const vals = numericValues(rows, arg);
   if (vals.length === 0) return 0;
@@ -425,7 +443,13 @@ function groupAndAggregate(
       result[keyName(k)] = bucketValue(grows[0], k);
     });
     aggs.forEach(a => {
-      result[a.name] = round(reduce(a.fn, grows, a.arg));
+      // A per-aggregate `where` restricts this group's rows before reducing, so
+      // one query can mix filtered and unfiltered aggregates.
+      const filter = a.filter;
+      const groupRows = filter ? grows.filter(r => evalCond(r, filter)) : grows;
+      const value = reduce(a.fn, groupRows, a.arg);
+      // Only round numeric aggregates — `first`/`last` may return a date string.
+      result[a.name] = typeof value === 'number' ? round(value) : value;
     });
     out.push(result);
   }
@@ -641,6 +665,12 @@ export async function runQuery(
     const aggs: Aggregation[] = aggStage
       ? aggStage.aggs
       : [{ name: 'count', fn: 'count' }];
+
+    // `first`/`last` pick a row per group in the pre-group row order, so apply
+    // the query's `sort` to the rows before grouping (grouping is stable).
+    if (sortStage && aggs.some(a => a.fn === 'first' || a.fn === 'last')) {
+      sortRows(rows, sortStage.key, sortStage.dir);
+    }
 
     resultRows = groupAndAggregate(rows, keys, aggs);
     columns = [...keys.map(keyName), ...aggs.map(a => a.name)];
