@@ -117,5 +117,9 @@ storybook-static
 .actualrc.yml
 actual.config.js
 
+# local agent/tool scratch output
+.playwright-mcp/
+/docs/superpowers/
+
 # ktn: locally packed API tarballs (CI packs these too)
 packages/api/*.tgz
