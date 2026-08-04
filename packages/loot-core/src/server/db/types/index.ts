@@ -259,6 +259,14 @@ export type DbCustomReport = {
   tombstone: 1 | 0;
 };
 
+export type DbSavedQuery = {
+  id: string;
+  name: string;
+  folder: string;
+  query: string;
+  tombstone: 1 | 0;
+};
+
 export type DbDashboardPage = {
   id: string;
   name: string;

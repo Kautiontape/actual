@@ -54,7 +54,23 @@ export function PrimaryButtons() {
       <Item title={t('Budget')} Icon={SvgWallet} to="/budget" />
       <Item title={t('Reports')} Icon={SvgReports} to="/reports" />
       {queryConsoleEnabled && (
-        <Item title={t('Query')} Icon={SvgCode} to="/query" />
+        <>
+          <Item title={t('Query')} Icon={SvgCode} to="/query" />
+          {location.pathname.startsWith('/query') && (
+            <>
+              <SecondaryItem
+                title={t('Saved Queries')}
+                to="/query/saved"
+                indent={15}
+              />
+              <SecondaryItem
+                title={t('Reference')}
+                to="/query/docs"
+                indent={15}
+              />
+            </>
+          )}
+        </>
       )}
       <Item title={t('Schedules')} Icon={SvgCalendar3} to="/schedules" />
       <Item

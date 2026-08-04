@@ -30,6 +30,7 @@ import { app as payeesApp } from './payees/app';
 import { get } from './post';
 import { app as preferencesApp } from './preferences/app';
 import * as prefs from './prefs';
+import { app as queryConsoleApp } from './queryConsole/app';
 import { app as reportsApp } from './reports/app';
 import { app as rulesApp } from './rules/app';
 import { app as schedulesApp } from './schedules/app';
@@ -140,6 +141,7 @@ app.combine(
   formulasApp,
   forecastApp,
   reportsApp,
+  queryConsoleApp,
   rulesApp,
   adminApp,
   transactionsApp,

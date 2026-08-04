@@ -38,6 +38,8 @@ import { MobilePageHeaderProvider, MobilePageHeaderSlot } from './Page';
 import { Reports } from './reports';
 import { LoadingIndicator } from './reports/LoadingIndicator';
 import { QueryConsole } from './reports/queryConsole/QueryConsole';
+import { QueryReference } from './reports/queryConsole/QueryReference';
+import { SavedQueriesManager } from './reports/queryConsole/SavedQueriesManager';
 import { NarrowAlternate, WideComponent } from './responsive';
 import { useMultiuserEnabled } from './ServerContext';
 import { Settings } from './settings';
@@ -267,7 +269,14 @@ export function FinancesApp() {
                   <Route path="/reports/*" element={<Reports />} />
 
                   {queryConsoleEnabled && (
-                    <Route path="/query" element={<QueryConsole />} />
+                    <>
+                      <Route path="/query" element={<QueryConsole />} />
+                      <Route
+                        path="/query/saved"
+                        element={<SavedQueriesManager />}
+                      />
+                      <Route path="/query/docs" element={<QueryReference />} />
+                    </>
                   )}
 
                   <Route

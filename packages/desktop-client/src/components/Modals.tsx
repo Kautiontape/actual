@@ -72,6 +72,7 @@ import { OutOfSyncMigrationsModal } from './modals/OutOfSyncMigrationsModal';
 import { PasswordEnableModal } from './modals/PasswordEnableModal';
 import { PayeeAutocompleteModal } from './modals/PayeeAutocompleteModal';
 import { PluggyAiInitialiseModal } from './modals/PluggyAiInitialiseModal';
+import { SavedQueriesModal } from './modals/SavedQueriesModal';
 import { ScheduledTransactionMenuModal } from './modals/ScheduledTransactionMenuModal';
 import { SelectLinkedAccountsModal } from './modals/SelectLinkedAccountsModal';
 import { SimpleFinInitialiseModal } from './modals/SimpleFinInitialiseModal';
@@ -141,6 +142,11 @@ export function Modals() {
 
         case 'select-linked-accounts':
           return <SelectLinkedAccountsModal key={key} {...modal.options} />;
+
+        case 'saved-queries-open':
+          return budgetId ? (
+            <SavedQueriesModal key={key} {...modal.options} />
+          ) : null;
 
         case 'confirm-category-delete':
           return <ConfirmCategoryDeleteModal key={key} {...modal.options} />;

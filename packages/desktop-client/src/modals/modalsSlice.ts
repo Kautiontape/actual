@@ -11,6 +11,7 @@ import type {
   NewUserEntity,
   NoteEntity,
   RuleEntity,
+  SavedQueryEntity,
   ScheduleEntity,
   SyncServerEnableBankingAccount,
   TransactionEntity,
@@ -69,6 +70,14 @@ export type Modal =
   | {
       name: 'select-linked-accounts';
       options: SelectLinkedAccountsModalProps;
+    }
+  | {
+      name: 'saved-queries-open';
+      options: {
+        queries: SavedQueryEntity[];
+        onSelect: (query: SavedQueryEntity) => void;
+        currentId?: string | null;
+      };
     }
   | {
       name: 'confirm-category-delete';
