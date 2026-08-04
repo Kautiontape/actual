@@ -9,6 +9,7 @@ import { AnimatedLoading } from '@actual-app/components/icons/AnimatedLoading';
 import {
   SvgAdd,
   SvgDotsHorizontalTriple,
+  SvgEquals,
 } from '@actual-app/components/icons/v1';
 import {
   SvgArrowsExpand3,
@@ -89,6 +90,12 @@ type AccountHeaderProps = {
   onCreateReconciliationTransaction: ComponentProps<
     typeof ReconcilingMessage
   >['onCreateTransaction'];
+  onUpdateReconcileAmount: ComponentProps<
+    typeof ReconcilingMessage
+  >['onUpdateTargetBalance'];
+  onClearTransactions: ComponentProps<
+    typeof ReconcilingMessage
+  >['onClearTransactions'];
   onToggleExtraBalances: ComponentProps<
     typeof Balances
   >['onToggleExtraBalances'];
@@ -157,6 +164,8 @@ export function AccountHeader({
   onShowTransactions,
   onDoneReconciling,
   onCreateReconciliationTransaction,
+  onUpdateReconcileAmount,
+  onClearTransactions,
   onToggleExtraBalances,
   onSaveName,
   saveNameError,
@@ -449,7 +458,7 @@ export function AccountHeader({
                   }}
                 >
                   <View>
-                    <SvgLockClosed width={14} height={14} />
+                    <SvgEquals width={14} height={14} />
                   </View>
                 </Button>
                 <Popover
@@ -633,8 +642,11 @@ export function AccountHeader({
         <ReconcilingMessage
           targetBalance={reconcileAmount}
           balanceQuery={balanceQuery}
+          accountId={accountId}
           onDone={onDoneReconciling}
           onCreateTransaction={onCreateReconciliationTransaction}
+          onUpdateTargetBalance={onUpdateReconcileAmount}
+          onClearTransactions={onClearTransactions}
         />
       )}
     </>
