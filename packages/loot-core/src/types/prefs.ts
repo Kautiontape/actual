@@ -40,6 +40,7 @@ export type SyncedPrefs = Partial<
     | `hide-cleared-${string}`
     | `hide-reconciled-${string}`
     | `hide-scheduled-${string}`
+    | `exclude-from-net-worth-${string}`
     | 'transaction-table-columns'
     | `transaction-table-columns-${string}`
     | `show-group-${string}`
