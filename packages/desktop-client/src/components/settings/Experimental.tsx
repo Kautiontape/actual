@@ -244,9 +244,6 @@ export function ExperimentalFeatures() {
             >
               <Trans>Akahu Bank Sync (NZ banks)</Trans>
             </FeatureToggle>
-            <FeatureToggle flag="queryConsole">
-              <Trans>Query console (pipeline queries under Reports)</Trans>
-            </FeatureToggle>
             {showServerPrefs && (
               <ServerFeatureToggle
                 prefName="flags.plugins"
@@ -256,6 +253,10 @@ export function ExperimentalFeatures() {
                 <Trans>Client-Side plugins (soon)</Trans>
               </ServerFeatureToggle>
             )}
+            {/* ktn additions — keep last (fork-sync conflict avoidance) */}
+            <FeatureToggle flag="queryConsole">
+              <Trans>Query console (pipeline queries under Reports)</Trans>
+            </FeatureToggle>
           </View>
         ) : (
           <Link

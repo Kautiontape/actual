@@ -12,6 +12,7 @@ export type FeatureFlag =
   | 'akahuBankSync'
   | 'mobileCalculator'
   | 'monteCarloReport'
+  // ktn additions — keep last (fork-sync conflict avoidance)
   | 'queryConsole';
 
 /**
@@ -39,9 +40,6 @@ export type SyncedPrefs = Partial<
     // read as a fallback for budgets that never used the column manager
     | `hide-cleared-${string}`
     | `hide-reconciled-${string}`
-    | `hide-scheduled-${string}`
-    | `exclude-from-net-worth-${string}`
-    | `payment-source-${string}`
     | 'transaction-table-columns'
     | `transaction-table-columns-${string}`
     | `show-group-${string}`
@@ -69,7 +67,11 @@ export type SyncedPrefs = Partial<
     | `flip-amount-${string}-${'csv' | 'qif'}`
     | `flags.${FeatureFlag}`
     | `learn-categories`
-    | `show-hidden-tags`,
+    | `show-hidden-tags`
+    // ktn additions — keep last (fork-sync conflict avoidance)
+    | `hide-scheduled-${string}`
+    | `exclude-from-net-worth-${string}`
+    | `payment-source-${string}`,
     string
   >
 >;

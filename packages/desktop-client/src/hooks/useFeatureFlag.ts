@@ -16,6 +16,7 @@ const DEFAULT_FEATURE_FLAG_STATE: Record<FeatureFlag, boolean> = {
   akahuBankSync: false,
   mobileCalculator: false,
   monteCarloReport: false,
+  // ktn additions — keep last (fork-sync conflict avoidance)
   queryConsole: false,
 };
 
