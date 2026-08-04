@@ -1,15 +1,20 @@
+import { send } from '@actual-app/core/platform/client/connection';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@actual-app/core/platform/client/connection', () => ({
-  send: vi.fn(),
-}));
-
-import { send } from '@actual-app/core/platform/client/connection';
+import { aqlQuery } from '#queries/aqlQuery';
 
 import { parseQuery } from './parse';
 import { runQuery } from './run';
 
+vi.mock('@actual-app/core/platform/client/connection', () => ({
+  send: vi.fn(),
+}));
+vi.mock('#queries/aqlQuery', () => ({
+  aqlQuery: vi.fn(),
+}));
+
 const sendMock = vi.mocked(send);
+const aqlMock = vi.mocked(aqlQuery);
 
 function cell(month: string, binding: string, value: number | boolean) {
   return { name: `budget${month.replace('-', '')}!${binding}`, value };
@@ -85,6 +90,65 @@ describe('runQuery — budgets source', () => {
       { month: '2025-01', spend: -100 },
       { month: '2025-02', spend: -200 },
       { month: '2025-03', spend: -300 },
+    ]);
+  });
+
+  it('first/last aggregates pick the row per group in sort order', async () => {
+    const res = await runQuery(
+      parseQuery(
+        'from budgets\nsort -month\ngroup category\naggregate newest = first month, oldest = last month, amt = first spent',
+      ),
+      { budgetType: 'envelope' },
+    );
+    expect(res.rows).toEqual([
+      {
+        category: 'Groceries',
+        newest: '2025-03',
+        oldest: '2025-01',
+        amt: -300,
+      },
+    ]);
+  });
+
+  it('filtered aggregates (where) compute per-aggregate before having', async () => {
+    const res = await runQuery(
+      parseQuery(
+        'from budgets\nsort -month\ngroup category\naggregate balance = sum spent, recent_big = first month where spent < -150\nhaving balance < 0',
+      ),
+      { budgetType: 'envelope' },
+    );
+    expect(res.rows).toEqual([
+      { category: 'Groceries', balance: -600, recent_big: '2025-03' },
+    ]);
+  });
+});
+
+describe('runQuery — transactions source', () => {
+  it('`first ... where amount > 0` returns the most recent payment, not the latest transaction', async () => {
+    // Amounts are stored in cents (normalizeRow divides by 100); `account` is
+    // the account name. Mirrors a credit card: charges are negative, payments
+    // (money in) are positive.
+    const rows = [
+      { id: '1', date: '2026-07-14', amount: -10000, account: 'Test Card' },
+      { id: '2', date: '2026-07-10', amount: -5000, account: 'Test Card' },
+      { id: '3', date: '2026-07-06', amount: 3000, account: 'Test Card' },
+      { id: '4', date: '2026-07-01', amount: -2000, account: 'Test Card' },
+      { id: '5', date: '2026-06-17', amount: 1000, account: 'Test Card' },
+    ];
+    aqlMock.mockResolvedValue({ data: rows } as unknown as Awaited<
+      ReturnType<typeof aqlQuery>
+    >);
+
+    const res = await runQuery(
+      parseQuery(
+        'from transactions\nfilter account ~ "Test"\nsort -date\ngroup account\naggregate balance = sum amount, day = first date where amount > 0, paid = first amount where amount > 0\nhaving balance < 0',
+      ),
+    );
+
+    // Latest transaction is the -100 charge on 07-14, but the latest PAYMENT is
+    // +30 on 07-06 — that is what should surface.
+    expect(res.rows).toEqual([
+      { account: 'Test Card', balance: -130, day: '2026-07-06', paid: 30 },
     ]);
   });
 });
