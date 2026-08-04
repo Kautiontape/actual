@@ -2,10 +2,14 @@ import React from 'react';
 
 import { generateAccount } from '@actual-app/core/mocks';
 import { q } from '@actual-app/core/shared/query';
-import type { AccountEntity } from '@actual-app/core/types/models';
+import type {
+  AccountEntity,
+  TransactionEntity,
+} from '@actual-app/core/types/models';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+import { useReconciliationSuggestion } from '#hooks/useReconciliationSuggestion';
 import { useSheetValue } from '#hooks/useSheetValue';
 import { TestProviders } from '#mocks';
 
@@ -13,6 +17,10 @@ import { ReconcileMenu, ReconcilingMessage } from './Reconcile';
 
 vi.mock('#hooks/useSheetValue', () => ({
   useSheetValue: vi.fn(),
+}));
+
+vi.mock('#hooks/useReconciliationSuggestion', () => ({
+  useReconciliationSuggestion: vi.fn(() => ({ type: 'none' })),
 }));
 
 // Use actual arithmetic and util functions for real math behavior
@@ -23,6 +31,7 @@ describe('ReconcilingMessage math & UI', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useReconciliationSuggestion).mockReturnValue({ type: 'none' });
   });
 
   function makeBalanceQuery() {
@@ -112,6 +121,69 @@ describe('ReconcilingMessage math & UI', () => {
       screen.getByText('Create reconciliation transaction'),
     );
     expect(onCreateTransaction).toHaveBeenCalledWith(-2000);
+  });
+
+  test('suggests the corrected balance when a sign flip is detected', async () => {
+    // cleared = -50.00, user entered +50.00 => diff = +100.00 (sign flip)
+    vi.mocked(useSheetValue).mockReturnValue(-5000);
+    vi.mocked(useReconciliationSuggestion).mockReturnValue({
+      type: 'signFlip',
+      correctedBalance: -5000,
+    });
+    const onUpdateTargetBalance = vi.fn();
+
+    render(
+      <TestProviders>
+        <ReconcilingMessage
+          balanceQuery={makeBalanceQuery()}
+          targetBalance={5000}
+          accountId="acc-1"
+          onDone={vi.fn()}
+          onCreateTransaction={vi.fn()}
+          onUpdateTargetBalance={onUpdateTargetBalance}
+          onClearTransactions={vi.fn()}
+        />
+      </TestProviders>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Use -50.00' }));
+    expect(onUpdateTargetBalance).toHaveBeenCalledWith(-5000);
+  });
+
+  test('previews and clears matching uncleared transactions on confirm', async () => {
+    // cleared = 100.00, bank = 60.00 => diff = -40.00, matched by two items
+    vi.mocked(useSheetValue).mockReturnValue(10000);
+    vi.mocked(useReconciliationSuggestion).mockReturnValue({
+      type: 'clearTransactions',
+      total: -4000,
+      transactions: [
+        { id: 't1', date: '2026-06-01', amount: -3000 } as TransactionEntity,
+        { id: 't2', date: '2026-06-02', amount: -1000 } as TransactionEntity,
+      ],
+    });
+    const onClearTransactions = vi.fn();
+
+    render(
+      <TestProviders>
+        <ReconcilingMessage
+          balanceQuery={makeBalanceQuery()}
+          targetBalance={6000}
+          accountId="acc-1"
+          onDone={vi.fn()}
+          onCreateTransaction={vi.fn()}
+          onUpdateTargetBalance={vi.fn()}
+          onClearTransactions={onClearTransactions}
+        />
+      </TestProviders>,
+    );
+
+    // Expand the preview, then confirm
+    await userEvent.click(screen.getByText('Review & mark cleared'));
+    expect(screen.getByText('-30.00')).toBeInTheDocument();
+    expect(screen.getByText('-10.00')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText('Mark cleared & reconcile'));
+    expect(onClearTransactions).toHaveBeenCalledWith(['t1', 't2']);
   });
 });
 
