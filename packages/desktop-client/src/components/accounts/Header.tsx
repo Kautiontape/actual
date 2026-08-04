@@ -822,6 +822,9 @@ function AccountMenu({
   const [hideScheduled, setHideScheduled] = useSyncedPref(
     `hide-scheduled-${account.id}`,
   );
+  const [excludeFromNetWorth, setExcludeFromNetWorth] = useSyncedPref(
+    `exclude-from-net-worth-${account.id}`,
+  );
 
   return (
     <Menu
@@ -829,6 +832,12 @@ function AccountMenu({
       onMenuSelect={item => {
         if (item === 'toggle-scheduled') {
           setHideScheduled(hideScheduled === 'true' ? 'false' : 'true');
+          return;
+        }
+        if (item === 'toggle-exclude-net-worth') {
+          setExcludeFromNetWorth(
+            excludeFromNetWorth === 'true' ? 'false' : 'true',
+          );
           return;
         }
         onMenuSelect(item);
@@ -876,6 +885,13 @@ function AccountMenu({
             hideScheduled === 'true'
               ? t('Show scheduled transactions')
               : t('Hide scheduled transactions'),
+        },
+        {
+          name: 'toggle-exclude-net-worth',
+          text:
+            excludeFromNetWorth === 'true'
+              ? t('Include in net worth')
+              : t('Exclude from net worth'),
         },
         { name: 'export', text: t('Export') },
         ...(account && !account.closed

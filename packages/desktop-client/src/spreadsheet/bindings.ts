@@ -49,29 +49,46 @@ export function accountBalanceUncleared(accountId: AccountEntity['id']) {
   } satisfies Binding<'account', 'balanceUncleared'>;
 }
 
-export function allAccountBalance() {
+export function allAccountBalance(excludedIds: string[] = []) {
   return {
     query: q('transactions')
-      .filter({ 'account.closed': false })
+      .filter({
+        $and: [
+          { 'account.closed': false },
+          ...excludedIds.map(id => ({ 'account.id': { $ne: id } })),
+        ],
+      })
       .calculate({ $sum: '$amount' }),
     name: 'accounts-balance',
   } satisfies Binding<'account', 'accounts-balance'>;
 }
 
-export function onBudgetAccountBalance() {
+export function onBudgetAccountBalance(excludedIds: string[] = []) {
   return {
     name: `onbudget-accounts-balance`,
     query: q('transactions')
-      .filter({ 'account.offbudget': false, 'account.closed': false })
+      .filter({
+        $and: [
+          { 'account.offbudget': false },
+          { 'account.closed': false },
+          ...excludedIds.map(id => ({ 'account.id': { $ne: id } })),
+        ],
+      })
       .calculate({ $sum: '$amount' }),
   } satisfies Binding<'account', 'onbudget-accounts-balance'>;
 }
 
-export function offBudgetAccountBalance() {
+export function offBudgetAccountBalance(excludedIds: string[] = []) {
   return {
     name: `offbudget-accounts-balance`,
     query: q('transactions')
-      .filter({ 'account.offbudget': true, 'account.closed': false })
+      .filter({
+        $and: [
+          { 'account.offbudget': true },
+          { 'account.closed': false },
+          ...excludedIds.map(id => ({ 'account.id': { $ne: id } })),
+        ],
+      })
       .calculate({ $sum: '$amount' }),
   } satisfies Binding<'account', 'offbudget-accounts-balance'>;
 }
