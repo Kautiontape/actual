@@ -147,31 +147,24 @@ function checkDatabaseValidity(
   appliedIds: number[],
   available: string[],
 ): void {
-  if (appliedIds.length > available.length) {
+  // Compare id sets rather than positions. A migration that is missing from
+  // the middle of the applied set is recoverable — `getPending` selects by id,
+  // so it just applies on this load. What is not recoverable is a database
+  // carrying migrations this build knows nothing about, which means it was
+  // written by a newer version.
+  const availableIds = new Set(available.map(getMigrationId));
+  const unknown = appliedIds.filter(id => !availableIds.has(id));
+
+  if (unknown.length > 0) {
     logger.error(
-      'Database is out of sync with migrations (index past available):',
+      'Database is out of sync with migrations (unknown applied migrations):',
       {
         appliedIds,
         available,
+        unknown,
       },
     );
     throw new Error('out-of-sync-migrations');
-  }
-
-  for (let i = 0; i < appliedIds.length; i++) {
-    if (appliedIds[i] !== getMigrationId(available[i])) {
-      logger.error(
-        'Database is out of sync with migrations (migration id mismatch):',
-        {
-          appliedIds,
-          available,
-          missing: available.filter(
-            m => !appliedIds.includes(getMigrationId(m)),
-          ),
-        },
-      );
-      throw new Error('out-of-sync-migrations');
-    }
   }
 }
 

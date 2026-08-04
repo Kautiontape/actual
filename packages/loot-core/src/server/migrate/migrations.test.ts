@@ -58,6 +58,24 @@ describe('Migrations', () => {
     );
   });
 
+  test('applies a migration whose id sorts before an already-applied one', async () => {
+    return withMigrationsDir(
+      __dirname + '/../../mocks/migrations',
+      async () => {
+        // Mirrors an upstream migration arriving with an id that sorts before
+        // a migration this database has already applied, which happens when a
+        // fork carries its own migration and then merges upstream.
+        db.runQuery('INSERT INTO __migrations__ (id) VALUES (1508727787513)');
+
+        await migrate(db.getDatabase());
+
+        expect(await getAppliedMigrations(db.getDatabase())).toEqual([
+          1508717984291, 1508718036311, 1508727787513,
+        ]);
+      },
+    );
+  });
+
   test('app runs database migrations', async () => {
     return withMigrationsDir(
       __dirname + '/../../mocks/migrations',
