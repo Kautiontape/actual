@@ -788,14 +788,65 @@ export async function matchTransactions(
   const accounts: db.DbAccount[] = await db.getAccounts();
   const accountsMap = new Map(accounts.map(account => [account.id, account]));
 
-  const transactionsStep1 = [];
+  // Run the rules up front so the payee/amount used for matching reflect any
+  // rule changes, and so the batch dedupe below can compare resolved payees.
+  const ruledTransactions = [];
   for (const {
     payee_name,
     trans: originalTrans,
     subtransactions,
   } of normalized) {
-    // Run the rules
-    const trans = await runRules(originalTrans, accountsMap);
+    ruledTransactions.push({
+      payee_name,
+      trans: await runRules(originalTrans, accountsMap),
+      subtransactions,
+    });
+  }
+
+  // Bank sync sources frequently return a pending authorization and its
+  // booked (posted) counterpart as two separate records with different import
+  // IDs. The matching passes below only compare incoming transactions against
+  // ones already saved in the database, so when both records arrive in the
+  // same batch neither can dedupe the other and a duplicate is created. Drop
+  // the pending record when its booked counterpart is present in the same
+  // batch, using the same criteria as the fuzzy matcher: exact amount, same
+  // payee, within 7 days.
+  const supersededByBooked = new Set<number>();
+  if (isBankSyncAccount) {
+    const claimedBooked = new Set<number>();
+    ruledTransactions.forEach(({ trans: pending }, pendingIndex) => {
+      if (pending.cleared) {
+        return;
+      }
+
+      const bookedIndex = ruledTransactions.findIndex(
+        ({ trans: booked }, index) =>
+          booked.cleared &&
+          !claimedBooked.has(index) &&
+          booked.amount === pending.amount &&
+          booked.payee === pending.payee &&
+          Math.abs(
+            dateFns.differenceInCalendarDays(
+              dateFns.parseISO(booked.date),
+              dateFns.parseISO(pending.date),
+            ),
+          ) <= 7,
+      );
+
+      if (bookedIndex !== -1) {
+        claimedBooked.add(bookedIndex);
+        supersededByBooked.add(pendingIndex);
+      }
+    });
+  }
+
+  const transactionsStep1 = [];
+  for (let index = 0; index < ruledTransactions.length; index++) {
+    if (supersededByBooked.has(index)) {
+      continue;
+    }
+
+    const { payee_name, trans, subtransactions } = ruledTransactions[index];
 
     let match = null;
     let fuzzyDataset = null;
