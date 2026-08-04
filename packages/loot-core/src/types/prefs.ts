@@ -11,6 +11,7 @@ export type FeatureFlag =
   | 'sankeyReport'
   | 'akahuBankSync'
   | 'mobileCalculator'
+  // ktn additions — keep last (fork-sync conflict avoidance)
   | 'queryConsole';
 
 /**
@@ -34,9 +35,6 @@ export type SyncedPrefs = Partial<
     | `show-extra-balances-${string}`
     | `hide-cleared-${string}`
     | `hide-reconciled-${string}`
-    | `hide-scheduled-${string}`
-    | `exclude-from-net-worth-${string}`
-    | `payment-source-${string}`
     // TODO: pull from src/components/modals/ImportTransactions.js
     | `parse-date-${string}-${'csv' | 'qif'}`
     | `import-reimport-deleted-${string}`
@@ -60,7 +58,11 @@ export type SyncedPrefs = Partial<
     | `flip-amount-${string}-${'csv' | 'qif'}`
     | `flags.${FeatureFlag}`
     | `learn-categories`
-    | `show-hidden-tags`,
+    | `show-hidden-tags`
+    // ktn additions — keep last (fork-sync conflict avoidance)
+    | `hide-scheduled-${string}`
+    | `exclude-from-net-worth-${string}`
+    | `payment-source-${string}`,
     string
   >
 >;

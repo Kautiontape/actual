@@ -143,11 +143,6 @@ export function Modals() {
         case 'select-linked-accounts':
           return <SelectLinkedAccountsModal key={key} {...modal.options} />;
 
-        case 'saved-queries-open':
-          return budgetId ? (
-            <SavedQueriesModal key={key} {...modal.options} />
-          ) : null;
-
         case 'confirm-category-delete':
           return <ConfirmCategoryDeleteModal key={key} {...modal.options} />;
 
@@ -432,6 +427,12 @@ export function Modals() {
 
         case 'enable-password-auth':
           return <PasswordEnableModal key={key} {...modal.options} />;
+
+        // ktn additions — keep last (fork-sync conflict avoidance)
+        case 'saved-queries-open':
+          return budgetId ? (
+            <SavedQueriesModal key={key} {...modal.options} />
+          ) : null;
 
         default:
           throw new Error('Unknown modal');

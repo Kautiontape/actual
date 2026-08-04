@@ -72,14 +72,6 @@ export type Modal =
       options: SelectLinkedAccountsModalProps;
     }
   | {
-      name: 'saved-queries-open';
-      options: {
-        queries: SavedQueryEntity[];
-        onSelect: (query: SavedQueryEntity) => void;
-        currentId?: string | null;
-      };
-    }
-  | {
       name: 'confirm-category-delete';
       options: {
         onDelete: (transferCategoryId: CategoryEntity['id']) => void;
@@ -677,6 +669,15 @@ export type Modal =
         categoryId: CategoryEntity['id'];
         templates: Template[];
         cleanup: CleanupTemplate[];
+      };
+    }
+  // ktn additions — keep last (fork-sync conflict avoidance)
+  | {
+      name: 'saved-queries-open';
+      options: {
+        queries: SavedQueryEntity[];
+        onSelect: (query: SavedQueryEntity) => void;
+        currentId?: string | null;
       };
     };
 
