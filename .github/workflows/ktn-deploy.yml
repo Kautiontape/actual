@@ -1,0 +1,38 @@
+name: ktn deploy
+on:
+  # Auto-deploy after every successful image build — the push-based equivalent of a
+  # watchtower (the runner pulls when we ship; no polling service). Enabled after the
+  # first deliberate cutover (2026-06-14) was verified.
+  workflow_run:
+    workflows: ['ktn build & publish']
+    types: [completed]
+    branches: [ktn]
+  workflow_dispatch:
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: [self-hosted, ktn]
+    permissions:
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ktn
+          sparse-checkout: |
+            deploy/ktn
+          sparse-checkout-cone-mode: false
+      # Ephemeral per-run login so the pull works whether the GHCR package is
+      # public or private — no long-lived token stored on the runner.
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      # Deploy in place on the existing service dir: reuse container `actual`,
+      # named volume `actual-data`, and loopback :8110. The repo's compose is the
+      # source of truth and is synced into place here, so a deploy is a pure image
+      # pull + restart and can never spawn a second, data-less container.
+      - name: Sync compose, pull, and restart in place
+        run: |
+          install -D -m 0644 deploy/ktn/docker-compose.yml /opt/services/actual/docker-compose.yml
+          cd /opt/services/actual
+          docker compose pull
+          docker compose up -d
+          docker image prune -f
