@@ -38,6 +38,7 @@ export type SyncedPrefs = Partial<
     // read as a fallback for budgets that never used the column manager
     | `hide-cleared-${string}`
     | `hide-reconciled-${string}`
+    | `hide-scheduled-${string}`
     | 'transaction-table-columns'
     | `transaction-table-columns-${string}`
     | `show-group-${string}`
