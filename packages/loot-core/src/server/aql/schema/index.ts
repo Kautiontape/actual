@@ -182,6 +182,13 @@ export const schema = {
     color_scheme: f('json'),
     tombstone: f('boolean'),
   },
+  saved_queries: {
+    id: f('id'),
+    name: f('string'),
+    folder: f('string', { default: '' }),
+    query: f('string'),
+    tombstone: f('boolean'),
+  },
   reflect_budgets: {
     id: f('id'),
     month: f('integer'),

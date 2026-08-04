@@ -12,6 +12,7 @@ import type { FormulasHandlers } from '#server/formulas/app';
 import type { NotesHandlers } from '#server/notes/app';
 import type { PayeesHandlers } from '#server/payees/app';
 import type { PreferencesHandlers } from '#server/preferences/app';
+import type { SavedQueryHandlers } from '#server/queryConsole/app';
 import type { ReportsHandlers } from '#server/reports/app';
 import type { RulesHandlers } from '#server/rules/app';
 import type { SchedulesHandlers } from '#server/schedules/app';
@@ -47,6 +48,7 @@ export type Handlers = {} & ServerHandlers &
   BudgetFileHandlers &
   EncryptionHandlers &
   TagsHandlers &
+  SavedQueryHandlers &
   AuthHandlers;
 
 export type HandlerFunctions = Handlers[keyof Handlers];

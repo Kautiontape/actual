@@ -9,6 +9,7 @@ import m1722717601000 from '#migrations/1722717601000_reports_move_selected_cate
 import m1722804019000 from '#migrations/1722804019000_create_dashboard_table';
 import m1723665565000 from '#migrations/1723665565000_prefs';
 import m1765518577215 from '#migrations/1765518577215_multiple_dashboards';
+import m1784000000000 from '#migrations/1784000000000_saved_queries';
 import m1788468782000 from '#migrations/1788468782000_add_messages_pending';
 import * as fs from '#platform/server/fs';
 import { logger } from '#platform/server/log';
@@ -23,6 +24,7 @@ const javascriptMigrations = {
   1722804019000: m1722804019000,
   1723665565000: m1723665565000,
   1765518577215: m1765518577215,
+  1784000000000: m1784000000000,
   1788468782000: m1788468782000,
 };
 

@@ -16,6 +16,7 @@ import { parseQuery, QueryParseError } from './parse';
 import { QueryEditor } from './QueryEditor';
 import { runQuery } from './run';
 import type { QueryResult, Row } from './run';
+import { SavedQueriesBar } from './SavedQueriesBar';
 
 const DEFAULT_QUERY = [
   '# Type a query, then press Run (or Cmd/Ctrl+Enter)',
@@ -26,8 +27,6 @@ const DEFAULT_QUERY = [
   'sort month',
   'window avg_3 = rolling_avg spend 3',
 ].join('\n');
-
-type Example = { label: string; query: string };
 
 // In-memory scratchpad: survives navigating away and back during a session,
 // but is intentionally cleared on a full reload.
@@ -134,65 +133,6 @@ export function QueryConsole() {
     storeEditorHeight(editorHeight);
   }
 
-  const examples: Example[] = [
-    {
-      label: t('Recent transactions for a payee'),
-      query: [
-        'from transactions',
-        'filter payee ~ "Amazon"',
-        'sort -date',
-        'take 50',
-      ].join('\n'),
-    },
-    {
-      label: t('Monthly spend + 3-month average'),
-      query: DEFAULT_QUERY,
-    },
-    {
-      label: t('Median spend by month, outliers excluded'),
-      query: [
-        'from transactions',
-        'filter category ~ "Food" or category ~ "Grocer"',
-        'exclude amount < -500',
-        'group month',
-        'aggregate spend = sum amount, typical = median amount, txns = count',
-        'sort month',
-      ].join('\n'),
-    },
-    {
-      label: t('Forecast the next 3 months'),
-      query: [
-        'from transactions',
-        'group month',
-        'aggregate spend = sum amount',
-        'sort month',
-        'window trend = rolling_avg spend 3',
-        'forecast projected = spend 3',
-      ].join('\n'),
-    },
-    {
-      label: t('Biggest months, with average transaction'),
-      query: [
-        'from transactions',
-        'filter amount < 0',
-        'group month',
-        'aggregate spend = sum amount, n = count',
-        'derive avg_txn = spend / n',
-        'having spend < -2000',
-        'sort spend',
-        'select month, spend, avg_txn, n',
-      ].join('\n'),
-    },
-    {
-      label: t('Budget categories under 80% used'),
-      query: [
-        'from budgets',
-        'filter available > 0 and saturation < 0.8',
-        'sort saturation',
-      ].join('\n'),
-    },
-  ];
-
   function onChangeText(value: string) {
     setText(value);
     scratch.text = value;
@@ -276,24 +216,7 @@ export function QueryConsole() {
           </Trans>
         </Text>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {examples.map(ex => (
-            <Button
-              key={ex.label}
-              variant="bare"
-              style={{
-                fontSize: 12,
-                color: theme.pageTextLink,
-                border: `1px solid ${theme.tableBorder}`,
-                borderRadius: 4,
-                padding: '3px 8px',
-              }}
-              onPress={() => onChangeText(ex.query)}
-            >
-              {ex.label}
-            </Button>
-          ))}
-        </View>
+        <SavedQueriesBar text={text} onLoadText={onChangeText} />
 
         <View
           style={{
