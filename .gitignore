@@ -108,3 +108,6 @@ storybook-static
 .actualrc.yaml
 .actualrc.yml
 actual.config.js
+
+# ktn: locally packed API tarballs (CI packs these too)
+packages/api/*.tgz
