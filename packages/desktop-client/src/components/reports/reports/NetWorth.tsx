@@ -44,8 +44,10 @@ import { useNavigate } from '#hooks/useNavigate';
 import { useRuleConditionFilters } from '#hooks/useRuleConditionFilters';
 import { useSyncedPref } from '#hooks/useSyncedPref';
 import { addNotification } from '#notifications/notificationsSlice';
-import { useDispatch } from '#redux';
+import { useDispatch, useSelector } from '#redux';
 import { useUpdateDashboardWidgetMutation } from '#reports/mutations';
+
+import { selectNetWorthAccounts } from './excludeFromNetWorth';
 
 export function NetWorth() {
   const params = useParams();
@@ -82,6 +84,11 @@ function NetWorthInner({ widget }: NetWorthInnerProps) {
   );
 
   const { data: accounts = [] } = useAccounts();
+  const syncedPrefs = useSelector(state => state.prefs.synced);
+  const includedAccounts = useMemo(
+    () => selectNetWorthAccounts(accounts, syncedPrefs),
+    [accounts, syncedPrefs],
+  );
   const {
     conditions,
     conditionsOp,
@@ -129,7 +136,7 @@ function NetWorthInner({ widget }: NetWorthInnerProps) {
       netWorthSpreadsheet(
         start,
         end,
-        accounts,
+        includedAccounts,
         conditions,
         conditionsOp,
         locale,
@@ -140,7 +147,7 @@ function NetWorthInner({ widget }: NetWorthInnerProps) {
     [
       start,
       end,
-      accounts,
+      includedAccounts,
       conditions,
       conditionsOp,
       locale,
