@@ -2605,6 +2605,8 @@ type TransactionTableInnerProps = {
   isAdding: boolean;
   isNew: (id: TransactionEntity['id']) => boolean;
   isMatched: (id: TransactionEntity['id']) => boolean;
+  addTransactionSeed?: Partial<TransactionEntity>;
+  addTransactionFocusField?: string;
   dateFormat: string | undefined;
   hideFraction: boolean;
   renderEmpty: ReactNode | (() => ReactNode);
@@ -2711,9 +2713,14 @@ function TransactionTableInner({
 
   useEffect(() => {
     if (!isAddingPrev && props.isAdding) {
-      newNavigator.onEdit('temp', 'date');
+      newNavigator.onEdit('temp', props.addTransactionFocusField ?? 'date');
     }
-  }, [isAddingPrev, props.isAdding, newNavigator]);
+  }, [
+    isAddingPrev,
+    props.isAdding,
+    props.addTransactionFocusField,
+    newNavigator,
+  ]);
 
   // Don't render reconciled transactions if we're hiding them.
   const transactionsToRender = useMemo(
@@ -3014,6 +3021,8 @@ export type TransactionTableProps = {
   isAdding: boolean;
   isNew: (id: TransactionEntity['id']) => boolean;
   isMatched: (id: TransactionEntity['id']) => boolean;
+  addTransactionSeed?: Partial<TransactionEntity>;
+  addTransactionFocusField?: string;
   isFiltered?: boolean;
   dateFormat: string | undefined;
   hideFraction: boolean;
@@ -3303,6 +3312,8 @@ export const TransactionTable = forwardRef(
           makeTemporaryTransactions(
             props.currentAccountId,
             props.currentCategoryId,
+            undefined,
+            props.addTransactionSeed,
           ),
         );
       }

@@ -171,6 +171,7 @@ export function makeTemporaryTransactions(
   currentAccountId: AccountEntity['id'] | null | undefined,
   currentCategoryId: CategoryEntity['id'] | null | undefined,
   lastDate?: string | null,
+  overrides?: Partial<TransactionEntity>,
 ): TransactionEntity[] {
   return [
     {
@@ -182,6 +183,7 @@ export function makeTemporaryTransactions(
       cleared: false,
       // TODO: either make this nullable or find a way to make this not null
       amount: null as unknown as number,
+      ...overrides,
     },
   ];
 }
