@@ -13,6 +13,7 @@ import {
 import {
   SvgArrowsExpand3,
   SvgArrowsShrink3,
+  SvgCalendar3,
   SvgDownloadThickBottom,
   SvgLockClosed,
   SvgPencil1,
@@ -201,6 +202,10 @@ export function AccountHeader({
     `show-account-${accountId}-net-worth-chart`,
   );
   const showNetWorthChart = showNetWorthChartPref === 'true';
+  const [hideScheduledPref, setHideScheduledPref] = useSyncedPref(
+    `hide-scheduled-${accountId}`,
+  );
+  const hideScheduled = hideScheduledPref === 'true';
 
   const dateFormat = useDateFormat() || 'MM/dd/yyyy';
   const locale = useLocale();
@@ -492,6 +497,60 @@ export function AccountHeader({
               )}
             </View>
           </Button>
+          <Button
+            variant="bare"
+            aria-label={
+              hideScheduled
+                ? t('Show upcoming transactions')
+                : t('Hide upcoming transactions')
+            }
+            style={{ padding: 6 }}
+            onPress={() =>
+              setHideScheduledPref(hideScheduled ? 'false' : 'true')
+            }
+          >
+            <View
+              title={
+                hideScheduled
+                  ? t('Show upcoming transactions')
+                  : t('Hide upcoming transactions')
+              }
+            >
+              <SvgCalendar3
+                style={{
+                  width: 14,
+                  height: 14,
+                  ...(hideScheduled && { color: theme.pageTextSubdued }),
+                }}
+              />
+            </View>
+          </Button>
+          <Button
+            variant="bare"
+            aria-label={
+              showReconciled
+                ? t('Hide reconciled transactions')
+                : t('Show reconciled transactions')
+            }
+            style={{ padding: 6 }}
+            onPress={() => onMenuSelect('toggle-reconciled')}
+          >
+            <View
+              title={
+                showReconciled
+                  ? t('Hide reconciled transactions')
+                  : t('Show reconciled transactions')
+              }
+            >
+              <SvgLockClosed
+                width={14}
+                height={14}
+                style={
+                  showReconciled ? undefined : { color: theme.pageTextSubdued }
+                }
+              />
+            </View>
+          </Button>
           {account ? (
             <View style={{ flex: '0 0 auto' }}>
               <DialogTrigger>
@@ -760,11 +819,18 @@ function AccountMenu({
 }: AccountMenuProps) {
   const { t } = useTranslation();
   const syncServerStatus = useSyncServerStatus();
+  const [hideScheduled, setHideScheduled] = useSyncedPref(
+    `hide-scheduled-${account.id}`,
+  );
 
   return (
     <Menu
       slot="close"
       onMenuSelect={item => {
+        if (item === 'toggle-scheduled') {
+          setHideScheduled(hideScheduled === 'true' ? 'false' : 'true');
+          return;
+        }
         onMenuSelect(item);
       }}
       items={[
@@ -803,6 +869,13 @@ function AccountMenu({
           text: showReconciled
             ? t('Hide reconciled transactions')
             : t('Show reconciled transactions'),
+        },
+        {
+          name: 'toggle-scheduled',
+          text:
+            hideScheduled === 'true'
+              ? t('Show scheduled transactions')
+              : t('Hide scheduled transactions'),
         },
         { name: 'export', text: t('Export') },
         ...(account && !account.closed

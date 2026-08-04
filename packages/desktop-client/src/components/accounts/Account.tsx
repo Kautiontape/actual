@@ -87,6 +87,7 @@ import { updateNewTransactions } from '#transactions/transactionsSlice';
 
 import { AccountEmptyMessage } from './AccountEmptyMessage';
 import { AccountHeader } from './Header';
+import { mergeWithPreviews } from './previewVisibility';
 
 type ConditionEntity = Partial<RuleConditionEntity> | TransactionFilterEntity;
 
@@ -98,6 +99,7 @@ function isTransactionFilterEntity(
 
 type AllTransactionsProps = {
   account?: AccountEntity | undefined;
+  accountId?: string | undefined;
   transactions: TransactionEntity[];
   balances: Record<TransactionEntity['id'], IntegerAmount> | null;
   showBalances?: boolean | undefined;
@@ -110,16 +112,23 @@ type AllTransactionsProps = {
 
 function AllTransactions({
   account,
+  accountId,
   transactions,
   balances,
   showBalances,
   filtered,
   children,
 }: AllTransactionsProps) {
-  const accountId = account?.id;
+  // Preview/scheduled rows are keyed off the real account id (undefined in the
+  // combined "All/On/Off budget" views, which then show all previews), while
+  // the hide-scheduled pref is keyed off the view id (`accountId`) so the
+  // toolbar toggle works per-view in those combined registers too.
+  const previewAccountId = account?.id;
+  const [hideScheduledPref] = useSyncedPref(`hide-scheduled-${accountId}`);
+  const hideScheduled = hideScheduledPref === 'true';
   const { dispatch: splitsExpandedDispatch } = useSplitsExpanded();
   const { previewTransactions, isLoading: isPreviewTransactionsLoading } =
-    useAccountPreviewTransactions({ accountId });
+    useAccountPreviewTransactions({ accountId: previewAccountId });
 
   useEffect(() => {
     if (!isPreviewTransactionsLoading) {
@@ -160,21 +169,22 @@ function AllTransactions({
     );
   }, [showBalances, previewTransactions, runningBalance]);
 
-  const allTransactions = useMemo(() => {
-    // Don't prepend scheduled transactions if we are filtering
-    if (!filtered && previewTransactions.length > 0) {
-      return previewTransactions.concat(transactions);
-    }
-    return transactions;
-  }, [filtered, previewTransactions, transactions]);
+  const allTransactions = useMemo(
+    () =>
+      mergeWithPreviews(transactions, previewTransactions, {
+        filtered: !!filtered,
+        hideScheduled,
+      }),
+    [filtered, hideScheduled, previewTransactions, transactions],
+  );
 
   const allBalances = useMemo(() => {
-    // Don't prepend scheduled transactions if we are filtering
-    if (!filtered && prependBalances && balances) {
+    // Don't prepend scheduled transactions if we are filtering or hiding them
+    if (!filtered && !hideScheduled && prependBalances && balances) {
       return { ...prependBalances, ...balances };
     }
     return balances;
-  }, [filtered, prependBalances, balances]);
+  }, [filtered, hideScheduled, prependBalances, balances]);
 
   if (!previewTransactions?.length || filtered) {
     return children(transactions, balances);
@@ -1738,6 +1748,7 @@ class AccountInternal extends PureComponent<
     return (
       <AllTransactions
         account={account}
+        accountId={accountId}
         transactions={transactions}
         balances={balances}
         showBalances={showBalances}
