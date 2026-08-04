@@ -5,6 +5,7 @@ import { useLocation } from 'react-router';
 import {
   SvgCheveronDown,
   SvgCheveronRight,
+  SvgCode,
   SvgCog,
   SvgCreditCard,
   SvgReports,
@@ -16,6 +17,7 @@ import {
 import { SvgCalendar3 } from '@actual-app/components/icons/v2';
 import { View } from '@actual-app/components/view';
 
+import { useFeatureFlag } from '#hooks/useFeatureFlag';
 import { useIsTestEnv } from '#hooks/useIsTestEnv';
 import { useSyncServerStatus } from '#hooks/useSyncServerStatus';
 
@@ -31,6 +33,7 @@ export function PrimaryButtons() {
   const syncServerStatus = useSyncServerStatus();
   const isTestEnv = useIsTestEnv();
   const isUsingServer = syncServerStatus !== 'no-server' || isTestEnv;
+  const queryConsoleEnabled = useFeatureFlag('queryConsole');
 
   const isActive = [
     '/payees',
@@ -50,6 +53,9 @@ export function PrimaryButtons() {
     <View style={{ flexShrink: 0 }}>
       <Item title={t('Budget')} Icon={SvgWallet} to="/budget" />
       <Item title={t('Reports')} Icon={SvgReports} to="/reports" />
+      {queryConsoleEnabled && (
+        <Item title={t('Query')} Icon={SvgCode} to="/query" />
+      )}
       <Item title={t('Schedules')} Icon={SvgCalendar3} to="/schedules" />
       <Item
         title={t('More')}
