@@ -244,6 +244,9 @@ export function ExperimentalFeatures() {
             >
               <Trans>Akahu Bank Sync (NZ banks)</Trans>
             </FeatureToggle>
+            <FeatureToggle flag="queryConsole">
+              <Trans>Query console (pipeline queries under Reports)</Trans>
+            </FeatureToggle>
             {showServerPrefs && (
               <ServerFeatureToggle
                 prefName="flags.plugins"

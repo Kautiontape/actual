@@ -12,6 +12,7 @@ import * as undo from '@actual-app/core/platform/client/undo';
 import { getLatestAppVersion, sync } from '#app/appSlice';
 import { ProtectedRoute } from '#auth/ProtectedRoute';
 import { Permissions } from '#auth/types';
+import { useFeatureFlag } from '#hooks/useFeatureFlag';
 import { useGlobalPref } from '#hooks/useGlobalPref';
 import { useLocalPref } from '#hooks/useLocalPref';
 import { useMetaThemeColor } from '#hooks/useMetaThemeColor';
@@ -34,6 +35,7 @@ import { TransactionEdit } from './mobile/transactions/TransactionEdit';
 import { Notifications } from './Notifications';
 import { MobilePageHeaderProvider, MobilePageHeaderSlot } from './Page';
 import { Reports } from './reports';
+import { QueryConsole } from './reports/queryConsole/QueryConsole';
 import { NarrowAlternate, WideComponent } from './responsive';
 import { useMultiuserEnabled } from './ServerContext';
 import { Settings } from './settings';
@@ -105,6 +107,7 @@ export function FinancesApp() {
   );
 
   const multiuserEnabled = useMultiuserEnabled();
+  const queryConsoleEnabled = useFeatureFlag('queryConsole');
 
   const init = useEffectEvent(() => {
     // Wait a little bit to make sure the sync button will get the
@@ -254,6 +257,10 @@ export function FinancesApp() {
                     />
 
                     <Route path="/reports/*" element={<Reports />} />
+
+                    {queryConsoleEnabled && (
+                      <Route path="/query" element={<QueryConsole />} />
+                    )}
 
                     <Route
                       path="/budget"
@@ -472,6 +479,9 @@ export function FinancesApp() {
                   <Route path="/rules" element={<MobileNavTabs />} />
                   <Route path="/payees" element={<MobileNavTabs />} />
                   <Route path="/schedules" element={<MobileNavTabs />} />
+                  {queryConsoleEnabled && (
+                    <Route path="/query" element={<MobileNavTabs />} />
+                  )}
                   <Route path="*" element={null} />
                 </Routes>
               </MobilePageHeaderProvider>
