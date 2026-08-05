@@ -4,8 +4,9 @@ This fork = upstream release tag (see `.ktn-base`) + the feature commits listed
 below, one commit per feature, each carrying its own doc in this directory.
 To drop a feature: `git revert <its commit>` — code and doc leave together.
 To upstream one: its commit is a self-contained diff; start from its doc.
-Sync automation: `.github/workflows/ktn-upstream-sync.yml` (manual dispatch;
-rebases the carried patches onto the newest upstream tag and opens a PR).
+Sync automation: `.github/workflows/ktn-upstream-sync.yml` — weekly Monday
+check via the Kautiontape/fork-sync reusable workflow (rebase mode); manual
+dispatch with a dry-run option also available.
 A cross-cutting "anchor registration points" commit keeps ktn entries at
 end-of-list in upstream registries — the feature-flag registries, the ktn
 synced-pref keys, and the saved-queries modal registrations — to minimize
