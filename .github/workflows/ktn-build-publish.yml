@@ -42,6 +42,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  typecheck:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: yarn typecheck
+
   package-api:
     name: Pack API for npm install
     runs-on: ubuntu-latest
