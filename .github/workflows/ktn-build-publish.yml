@@ -1,9 +1,13 @@
 name: ktn build & publish
 on:
   push:
-    branches: [ktn]
+    # sync/**: the gate for rebase-mode sync PRs. Those PRs conflict on
+    # .ktn-base by construction, and GitHub never runs pull_request
+    # workflows on a conflicted PR — so their gate must trigger on push.
+    # The checks still show on the PR (they attach to the head SHA).
+    branches: [ktn, 'sync/**']
   pull_request:
-    branches: [ktn] # build-gate for upstream-sync PRs (cloud only — safe for untrusted)
+    branches: [ktn] # gate for ordinary mergeable PRs (cloud only — safe for untrusted)
   workflow_dispatch:
 concurrency:
   group: ktn-build-${{ github.ref }}
@@ -37,13 +41,13 @@ jobs:
           context: .
           file: packages/sync-server/docker/ubuntu.Dockerfile
           platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' }} # PRs build-only (gate); pushes publish
+          push: ${{ github.ref == 'refs/heads/ktn' }} # only ktn publishes; sync/** pushes and PRs are build-only gates
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   typecheck:
-    if: github.event_name == 'pull_request'
+    if: github.ref != 'refs/heads/ktn' # gate-only: sync/** pushes and PR merge refs; ktn deploy pushes skip it
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
