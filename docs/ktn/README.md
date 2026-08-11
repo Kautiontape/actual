@@ -6,7 +6,11 @@ To drop a feature: `git revert <its commit>` — code and doc leave together.
 To upstream one: its commit is a self-contained diff; start from its doc.
 Sync automation: `.github/workflows/ktn-upstream-sync.yml` — weekly Monday
 check via the Kautiontape/fork-sync reusable workflow (rebase mode); manual
-dispatch with a dry-run option also available.
+dispatch with a dry-run option also available. It opens a `sync/<tag>` PR,
+which is **never merged with the merge button** — rebase-mode syncs conflict
+on `.ktn-base` by construction, and merging would double every carried patch
+in the next sync. Ship it by dispatching `ktn-promote.yml` instead, which
+force-pushes the gated branch over `ktn`. Full runbook in [ci-cd.md](ci-cd.md).
 A cross-cutting "anchor registration points" commit keeps ktn entries at
 end-of-list in upstream registries — the feature-flag registries, the ktn
 synced-pref keys, and the saved-queries modal registrations — to minimize

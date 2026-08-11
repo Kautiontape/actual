@@ -6,8 +6,20 @@ on:
     # workflows on a conflicted PR — so their gate must trigger on push.
     # The checks still show on the PR (they attach to the head SHA).
     branches: [ktn, 'sync/**']
+    # A docs-only push changes nothing in the image, and ktn-deploy keys off
+    # this workflow's completion — so building one would redeploy prod for a
+    # prose edit. Skip those. Applies to sync/** too, which is harmless: a
+    # sync branch always changes .ktn-base, so its gate still fires. The
+    # corollary is that a docs-only fixup pushed on top of a sync branch
+    # leaves that new head with no check runs, and the promote then refuses
+    # it ("no check runs on ...") rather than shipping something ungated —
+    # re-run this workflow via workflow_dispatch to clear that.
+    paths-ignore:
+      - '**.md'
+      - 'docs/ktn/**'
   pull_request:
     branches: [ktn] # gate for ordinary mergeable PRs (cloud only — safe for untrusted)
+    # Deliberately not paths-ignored: PR gating stays unconditional.
   workflow_dispatch:
 concurrency:
   group: ktn-build-${{ github.ref }}
