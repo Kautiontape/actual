@@ -765,8 +765,8 @@ describe('Account sync', () => {
             amount: -10.59,
           },
         ],
-        true, // isBankSyncAccount
-        false, // strictIdChecking — bank sync accounts disable strict id checking
+        // bank sync accounts disable strict id checking
+        { isBankSyncAccount: true, strictIdChecking: false },
       );
 
       const transactions = await getAllTransactions();
@@ -802,8 +802,7 @@ describe('Account sync', () => {
             amount: -10.59,
           },
         ],
-        true, // isBankSyncAccount
-        false, // strictIdChecking
+        { isBankSyncAccount: true, strictIdChecking: false },
       );
 
       const transactions = await getAllTransactions();
