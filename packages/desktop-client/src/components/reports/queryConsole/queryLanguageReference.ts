@@ -26,7 +26,7 @@ that picks a table, then filter, group, aggregate, and shape the output.
 
 ## Tables
 
-- \`transactions\` — every transaction (fields include \`date\`, \`amount\`, \`payee\`, \`category\`, \`account\`, \`notes\`, \`cleared\`, \`reconciled\`, \`offbudget\`, \`onbudget\`, \`open\`, \`closed\`).
+- \`transactions\` — every transaction (fields include \`date\`, \`amount\`, \`payee\`, \`category\`, \`group\` (the category's group), \`account\`, \`notes\`, \`cleared\`, \`reconciled\`, \`offbudget\`, \`onbudget\`, \`open\`, \`closed\`).
 - \`accounts\`, \`categories\`, \`payees\`, \`schedules\`, \`rules\`.
 - \`budgets\` — budgeted/spent/available per category per month (fields include \`month\`, \`category\`, \`group\`, \`budgeted\`, \`spent\`, \`available\`, \`balance\`, \`carryover\`, \`goal\`, \`saturation\`).
 
@@ -103,6 +103,22 @@ select month, spend, avg_txn, n
 
 Reads the biggest-spending months, with the average transaction size, showing
 only months over $2,000 of spend.
+
+## Spend by category group
+
+\`group\` on \`transactions\` is the category's group, so a query can roll
+spending up a level without listing every category:
+
+\`\`\`
+from transactions
+filter amount < 0 and date >= this year
+group group
+aggregate spend = sum amount, n = count
+sort spend
+\`\`\`
+
+It filters in SQL like any other field (\`filter group == "Bills"\`), and
+pairs with a time bucket for a per-group trend: \`group month, group\`.
 
 ## Most recent row per group ("last credit-card payment")
 

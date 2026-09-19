@@ -35,6 +35,7 @@ const FIELDS = [
   'amount',
   'payee',
   'category',
+  'group',
   'account',
   'notes',
   'id',

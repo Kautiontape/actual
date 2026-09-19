@@ -6,8 +6,10 @@
 (CodeMirror editor with highlighting, autocomplete, and linting via
 `@codemirror/lint`), parsed by `parse.ts` and executed by `run.ts` against AQL.
 Includes budgets-table support via a synthetic source with pure row-assembly
-helpers (`budgets.ts`), month/year grouping fixes, a resizable editor, and a
-mobile-nav fix so the Settings tab is not hidden when the Query tab is enabled.
+helpers (`budgets.ts`), month/year grouping fixes, a `group` field on
+`transactions` (the category's group, selected via the `category.group.name`
+join so it filters and sorts in SQL), a resizable editor, and a mobile-nav fix
+so the Settings tab is not hidden when the Query tab is enabled.
 **Surface:** `packages/desktop-client/src/components/reports/queryConsole/`
 (`QueryConsole.tsx`, `QueryEditor.tsx`, `codeMirror-queryLanguage.ts`,
 `parse.ts`, `run.ts`, `budgets.ts`, + tests), route in

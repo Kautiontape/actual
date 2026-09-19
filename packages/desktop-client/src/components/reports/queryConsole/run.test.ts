@@ -28,6 +28,7 @@ const SPENT_BY_MONTH: Record<string, number> = {
 
 beforeEach(() => {
   sendMock.mockReset();
+  aqlMock.mockReset();
   sendMock.mockImplementation((async (
     name: string,
     args: { month: string },
@@ -149,6 +150,83 @@ describe('runQuery — transactions source', () => {
     // +30 on 07-06 — that is what should surface.
     expect(res.rows).toEqual([
       { account: 'Test Card', balance: -130, day: '2026-07-06', paid: 30 },
+    ]);
+  });
+
+  it('groups by the category group and pushes `group` filters to SQL', async () => {
+    const rows = [
+      {
+        id: '1',
+        date: '2026-07-14',
+        amount: -10000,
+        category: 'Rent',
+        group: 'Bills',
+      },
+      {
+        id: '2',
+        date: '2026-07-10',
+        amount: -5000,
+        category: 'Power',
+        group: 'Bills',
+      },
+      {
+        id: '3',
+        date: '2026-07-06',
+        amount: -3000,
+        category: 'Groceries',
+        group: 'Food',
+      },
+      { id: '4', date: '2026-07-01', amount: -2000, category: '', group: '' },
+    ];
+    aqlMock.mockResolvedValue({ data: rows } as unknown as Awaited<
+      ReturnType<typeof aqlQuery>
+    >);
+
+    const res = await runQuery(
+      parseQuery(
+        'from transactions\nfilter group != "Fun"\ngroup group\naggregate spend = sum amount, n = count\nsort spend',
+      ),
+    );
+
+    expect(res.columns).toEqual(['group', 'spend', 'n']);
+    expect(res.rows).toEqual([
+      { group: 'Bills', spend: -150, n: 2 },
+      { group: 'Food', spend: -30, n: 1 },
+      { group: '', spend: -20, n: 1 },
+    ]);
+
+    // `group` resolves to the category group's name in both the select and
+    // the pushed-down filter.
+    expect(aqlMock).toHaveBeenCalledTimes(1);
+    const query = aqlMock.mock.calls[0][0].serialize();
+    expect(query.selectExpressions).toContainEqual({
+      group: 'category.group.name',
+    });
+    expect(query.filterExpressions).toEqual([
+      { 'category.group.name': { $ne: 'Fun' } },
+    ]);
+  });
+
+  it('`select group` exposes the category group on raw rows', async () => {
+    aqlMock.mockResolvedValue({
+      data: [
+        {
+          id: '1',
+          date: '2026-07-14',
+          amount: -10000,
+          category: 'Rent',
+          group: 'Bills',
+        },
+      ],
+    } as unknown as Awaited<ReturnType<typeof aqlQuery>>);
+
+    const res = await runQuery(
+      parseQuery('from transactions\nselect date, group, category, amount'),
+    );
+
+    expect(res.columns).toEqual(['date', 'group', 'category', 'amount']);
+    expect(res.rows).toEqual([
+      { date: '2026-07-14', group: 'Bills', category: 'Rent', amount: -100 },
     ]);
   });
 });

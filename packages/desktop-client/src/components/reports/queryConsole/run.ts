@@ -41,6 +41,9 @@ function aqlField(table: Table, field: string): string {
   if (table === 'transactions') {
     if (field === 'payee') return 'payee.name';
     if (field === 'category') return 'category.name';
+    // `group` is the category's group (two-hop join), so `filter group == "Bills"`
+    // still runs in SQL.
+    if (field === 'group') return 'category.group.name';
     if (field === 'account') return 'account.name';
     // `offbudget`/`onbudget` are properties of the account; expose them as
     // friendly aliases (`onbudget` is the inverse — see aqlValue).
@@ -206,6 +209,7 @@ function defaultSelect(table: Table): Array<string | Record<string, string>> {
       'reconciled',
       { payee: 'payee.name' },
       { category: 'category.name' },
+      { group: 'category.group.name' },
       { account: 'account.name' },
       { offbudget: 'account.offbudget' },
       { closed: 'account.closed' },
@@ -243,6 +247,7 @@ function normalizeRow(r: Row, table: Table): Row {
     amount: r.amount == null ? 0 : Number(r.amount) / 100,
     payee: r.payee ?? '',
     category: r.category ?? '',
+    group: r.group ?? '',
     account: r.account ?? '',
     notes: r.notes ?? '',
     cleared: r.cleared,
@@ -624,6 +629,7 @@ export async function runQuery(
       'reconciled',
       'payee',
       'category',
+      'group',
       'account',
     ]);
     const rawPostProcess =
