@@ -206,6 +206,12 @@ function optionsForVerb(verb: string, doc: string): Completion[] {
       ];
     case 'group':
       return [...BUCKETS.map(b => complete(b, 'keyword')), ...fields];
+    case 'pivot':
+      return [
+        ...BUCKETS.map(b => complete(b, 'keyword')),
+        ...defined,
+        ...['using', 'total'].map(k => complete(k, 'keyword')),
+      ];
     case 'select':
     case 'sort':
     case 'order':

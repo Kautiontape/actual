@@ -124,6 +124,153 @@ describe('runQuery — budgets source', () => {
   });
 });
 
+describe('runQuery — pivot', () => {
+  it('spreads a group key into columns with a row total', async () => {
+    const res = await runQuery(
+      parseQuery(
+        'from budgets\ngroup category, month\naggregate s = sum spent\npivot month total',
+      ),
+      { budgetType: 'envelope' },
+    );
+    expect(res.columns).toEqual([
+      'category',
+      '2025-01',
+      '2025-02',
+      '2025-03',
+      'total',
+    ]);
+    expect(res.rows).toEqual([
+      {
+        category: 'Groceries',
+        '2025-01': -100,
+        '2025-02': -200,
+        '2025-03': -300,
+        total: -600,
+      },
+    ]);
+    expect(res.grouped).toBe(true);
+  });
+
+  it('leaves missing cells blank, sorts rows by key, and labels blank keys', async () => {
+    aqlMock.mockResolvedValue({
+      data: [
+        { id: '1', date: '2026-02-03', amount: -1000, group: 'Food' },
+        { id: '2', date: '2026-01-20', amount: -2000, group: 'Bills' },
+        { id: '3', date: '2026-01-05', amount: -500, group: 'Food' },
+        { id: '4', date: '2026-02-11', amount: -300, group: '' },
+      ],
+    } as unknown as Awaited<ReturnType<typeof aqlQuery>>);
+
+    const res = await runQuery(
+      parseQuery(
+        'from transactions\ngroup month, group\naggregate spend = sum amount\npivot group',
+      ),
+    );
+
+    expect(res.columns).toEqual(['month', '(none)', 'Bills', 'Food']);
+    expect(res.rows).toEqual([
+      { month: '2026-01', '(none)': null, Bills: -20, Food: -5 },
+      { month: '2026-02', '(none)': -3, Bills: null, Food: -10 },
+    ]);
+  });
+
+  it('applies having before the pivot and sort/select after it', async () => {
+    aqlMock.mockResolvedValue({
+      data: [
+        { id: '1', date: '2026-02-03', amount: -1000, group: 'Food' },
+        { id: '2', date: '2026-01-20', amount: -2000, group: 'Bills' },
+        { id: '3', date: '2026-01-05', amount: -500, group: 'Food' },
+        { id: '4', date: '2026-02-11', amount: -4000, group: 'Bills' },
+      ],
+    } as unknown as Awaited<ReturnType<typeof aqlQuery>>);
+
+    const res = await runQuery(
+      parseQuery(
+        [
+          'from transactions',
+          'group group, month',
+          'aggregate spend = sum amount, n = count',
+          'having spend < -6',
+          'pivot month using spend total',
+          'sort total',
+          'select group, total',
+        ].join('\n'),
+      ),
+    );
+
+    // `having` dropped the Food/2026-01 cell (-5); totals reflect that.
+    expect(res.columns).toEqual(['group', 'total']);
+    expect(res.rows).toEqual([
+      { group: 'Bills', total: -60 },
+      { group: 'Food', total: -10 },
+    ]);
+  });
+
+  it('pivots on the only group key into a single wide row', async () => {
+    aqlMock.mockResolvedValue({
+      data: [
+        { id: '1', date: '2026-02-03', amount: -1000 },
+        { id: '2', date: '2026-01-20', amount: -2000 },
+      ],
+    } as unknown as Awaited<ReturnType<typeof aqlQuery>>);
+
+    const res = await runQuery(
+      parseQuery(
+        'from transactions\ngroup month\naggregate spend = sum amount\npivot month total',
+      ),
+    );
+    expect(res.columns).toEqual(['2026-01', '2026-02', 'total']);
+    expect(res.rows).toEqual([{ '2026-01': -20, '2026-02': -10, total: -30 }]);
+  });
+
+  it('explains a bad pivot key or an ambiguous value column', async () => {
+    aqlMock.mockResolvedValue({
+      data: [{ id: '1', date: '2026-02-03', amount: -1000, group: 'Food' }],
+    } as unknown as Awaited<ReturnType<typeof aqlQuery>>);
+
+    await expect(
+      runQuery(
+        parseQuery(
+          'from transactions\ngroup group\naggregate spend = sum amount\npivot month',
+        ),
+      ),
+    ).rejects.toThrow(
+      /pivot key "month" is not a group key. Group keys: group/,
+    );
+
+    await expect(
+      runQuery(
+        parseQuery(
+          'from transactions\ngroup group, month\naggregate spend = sum amount, n = count\npivot month',
+        ),
+      ),
+    ).rejects.toThrow(
+      /needs "using <column>" when there are several aggregates \(spend, n\)/,
+    );
+
+    await expect(
+      runQuery(
+        parseQuery(
+          'from transactions\ngroup group, month\naggregate spend = sum amount\npivot month using nope',
+        ),
+      ),
+    ).rejects.toThrow(
+      /Unknown column "nope" in pivot using. Available columns: spend/,
+    );
+
+    await expect(
+      runQuery(
+        parseQuery(
+          'from transactions\naggregate spend = sum amount\npivot month',
+        ),
+      ),
+    ).rejects.toThrow(/pivot needs a "group" stage/);
+    await expect(
+      runQuery(parseQuery('from transactions\npivot month')),
+    ).rejects.toThrow(/pivot needs a "group" stage/);
+  });
+});
+
 describe('runQuery — transactions source', () => {
   it('`first ... where amount > 0` returns the most recent payment, not the latest transaction', async () => {
     // Amounts are stored in cents (normalizeRow divides by 100); `account` is

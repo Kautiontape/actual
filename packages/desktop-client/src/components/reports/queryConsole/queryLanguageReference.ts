@@ -23,6 +23,7 @@ that picks a table, then filter, group, aggregate, and shape the output.
 | \`take\` | \`limit\` | Limit the number of rows | \`take 50\` |
 | \`window\` | | Rolling calculation across ordered rows | \`window avg3 = rolling_avg spend 3\` |
 | \`forecast\` | | Project future periods | \`forecast projected = spend 3\` |
+| \`pivot\` | | Spread one group key into columns | \`pivot month total\` |
 
 ## Tables
 
@@ -119,6 +120,29 @@ sort spend
 
 It filters in SQL like any other field (\`filter group == "Bills"\`), and
 pairs with a time bucket for a per-group trend: \`group month, group\`.
+
+## Pivot table
+
+\`pivot <key> [using <column>] [total]\` reshapes grouped rows: the named group
+key becomes the columns, the remaining group keys stay as rows, and the
+aggregate fills the cells. With a single aggregate it is the cell value
+automatically; with several, name one with \`using\`. \`total\` appends a
+row-sum column.
+
+\`\`\`
+from transactions
+filter amount < 0 and date >= last 6 months
+group group, month
+aggregate spend = sum amount
+pivot month total
+\`\`\`
+
+One row per category group, one column per month, spend in the cells (blank
+where there was none), and a \`total\` column at the end. \`having\` runs before
+the pivot and sees the long form (\`having spend < -100\` drops individual
+cells); \`sort\`, \`take\` and \`select\` run after it and see the wide rows, so
+\`sort -total\` orders the groups by their row total. A blank key value gets
+the column header \`(none)\`. \`pivot\` and \`forecast\` cannot be combined.
 
 ## Most recent row per group ("last credit-card payment")
 

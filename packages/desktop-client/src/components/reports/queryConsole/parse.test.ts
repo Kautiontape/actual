@@ -245,4 +245,44 @@ describe('parseQuery', () => {
       values: [{ type: 'string', value: '2025-01' }],
     });
   });
+
+  it('parses pivot with its optional using/total in either order', () => {
+    expect(only(parseQuery('pivot month'), 'pivot')).toEqual({
+      kind: 'pivot',
+      key: 'month',
+      using: undefined,
+      total: false,
+    });
+    expect(only(parseQuery('pivot month using spend total'), 'pivot')).toEqual({
+      kind: 'pivot',
+      key: 'month',
+      using: 'spend',
+      total: true,
+    });
+    expect(only(parseQuery('pivot group TOTAL using n'), 'pivot')).toEqual({
+      kind: 'pivot',
+      key: 'group',
+      using: 'n',
+      total: true,
+    });
+  });
+
+  it('rejects malformed pivots', () => {
+    expect(() => parseQuery('pivot')).toThrow(/pivot requires a group key/);
+    expect(() => parseQuery('pivot month using')).toThrow(
+      /needs a column name/,
+    );
+    expect(() => parseQuery('pivot month sideways')).toThrow(
+      /Unexpected "sideways" in pivot/,
+    );
+  });
+
+  it('refuses pivot together with forecast', () => {
+    expect(() =>
+      parseQuery('group month\nforecast p = spend 2\npivot month'),
+    ).toThrow(/pivot and forecast cannot be used/);
+    expect(() =>
+      parseQuery('group month\npivot month\nforecast p = spend 2'),
+    ).toThrow(/pivot and forecast cannot be used/);
+  });
 });

@@ -12,6 +12,7 @@
 //   sort month
 //   window avg_3 = rolling_avg spend 3
 //   forecast projected = spend 3
+//   pivot month total
 
 import { format, startOfYear, subDays, subMonths, subWeeks } from 'date-fns';
 
@@ -120,7 +121,11 @@ export type Stage =
   | { kind: 'sort'; key: string; dir: 'asc' | 'desc' }
   | { kind: 'take'; n: number }
   | { kind: 'window'; name: string; fn: WindowFn; arg: string; n?: number }
-  | { kind: 'forecast'; name: string; arg: string; n: number };
+  | { kind: 'forecast'; name: string; arg: string; n: number }
+  // Reshape grouped rows: `key` (one of the group keys) becomes the columns,
+  // the remaining keys stay as rows, `using` picks the cell value (defaults to
+  // the sole aggregate), `total` appends a row-sum column.
+  | { kind: 'pivot'; key: string; using?: string; total: boolean };
 
 export class QueryParseError extends Error {
   line?: number;
@@ -722,9 +727,41 @@ export const VERB_LIST = [
   'limit',
   'window',
   'forecast',
+  'pivot',
 ] as const;
 
 const VERBS = new Set<string>(VERB_LIST);
+
+// `pivot <key> [using <column>] [total]` — the options may come in either order.
+function parsePivot(rest: string, line: number): Stage {
+  const toks = rest.split(/\s+/).filter(Boolean);
+  const key = toks.shift();
+  if (!key) {
+    throw new QueryParseError(
+      'pivot requires a group key to spread into columns, e.g. "pivot month"',
+      line,
+    );
+  }
+  let using: string | undefined;
+  let total = false;
+  while (toks.length > 0) {
+    const tok = toks.shift().toLowerCase();
+    if (tok === 'using') {
+      using = toks.shift();
+      if (!using) {
+        throw new QueryParseError('pivot "using" needs a column name', line);
+      }
+    } else if (tok === 'total') {
+      total = true;
+    } else {
+      throw new QueryParseError(
+        `Unexpected "${tok}" in pivot. Expected: pivot <key> [using <column>] [total]`,
+        line,
+      );
+    }
+  }
+  return { kind: 'pivot', key, using, total };
+}
 
 function parseGroup(rest: string, line: number): Stage {
   const keys: GroupKey[] = rest
@@ -999,8 +1036,24 @@ export function parseQuery(text: string): Stage[] {
       case 'forecast':
         stages.push(parseForecast(rest, lineNo));
         break;
+      case 'pivot':
+        stages.push(parsePivot(rest, lineNo));
+        break;
       default:
         break;
+    }
+
+    // Forecast rows blank every non-time key and write to their own column, so
+    // pivoting them only yields a phantom row of empty cells. Refuse the combo.
+    const last = stages[stages.length - 1];
+    if (
+      (last?.kind === 'pivot' && stages.some(s => s.kind === 'forecast')) ||
+      (last?.kind === 'forecast' && stages.some(s => s.kind === 'pivot'))
+    ) {
+      throw new QueryParseError(
+        'pivot and forecast cannot be used in the same query',
+        lineNo,
+      );
     }
   });
 

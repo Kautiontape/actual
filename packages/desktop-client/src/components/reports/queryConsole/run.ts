@@ -559,6 +559,91 @@ function forecastRows(
   return out;
 }
 
+// --- pivot -----------------------------------------------------------------
+
+// Header for pivot columns whose key value is blank (e.g. uncategorized rows
+// grouped by category) — an empty header is unusable in the table and CSV.
+const PIVOT_BLANK_LABEL = '(none)';
+
+// Spread the grouped (long-form) rows wide: one column per distinct value of
+// the pivoted key, the other group keys as row identity, and the chosen value
+// column in the cells. Cells with no matching row stay null (render blank).
+function pivotRows(
+  rows: Row[],
+  keys: GroupKey[],
+  aggs: Aggregation[],
+  columns: string[],
+  stage: Extract<Stage, { kind: 'pivot' }>,
+): { rows: Row[]; columns: string[]; rowKeys: string[] } {
+  const keyNames = keys.map(keyName);
+  const pivotKey = keyNames.find(
+    k => k.toLowerCase() === stage.key.toLowerCase(),
+  );
+  if (!pivotKey) {
+    throw new Error(
+      keyNames.length
+        ? `pivot key "${stage.key}" is not a group key. Group keys: ${keyNames.join(', ')}`
+        : 'pivot needs a "group" stage whose key it can spread into columns',
+    );
+  }
+  const rowKeys = keyNames.filter(k => k !== pivotKey);
+
+  let valueCol = stage.using;
+  if (!valueCol) {
+    if (aggs.length !== 1) {
+      throw new Error(
+        `pivot needs "using <column>" when there are several aggregates (${aggs.map(a => a.name).join(', ')})`,
+      );
+    }
+    valueCol = aggs[0].name;
+  } else if (!columns.includes(valueCol) || keyNames.includes(valueCol)) {
+    const candidates = columns.filter(c => !keyNames.includes(c));
+    throw new Error(
+      `Unknown column "${valueCol}" in pivot using. Available columns: ${candidates.join(', ')}`,
+    );
+  }
+
+  const label = (v: unknown) => {
+    const text = String(v ?? '');
+    return text === '' ? PIVOT_BLANK_LABEL : text;
+  };
+  const labels = Array.from(new Set(rows.map(r => label(r[pivotKey])))).sort(
+    (a, b) => a.localeCompare(b),
+  );
+
+  // Row identity = the remaining keys, first-seen order (rows arrive sorted).
+  const wide = new Map<string, Row>();
+  for (const r of rows) {
+    const id = rowKeys.map(k => String(r[k] ?? '')).join('\u0000');
+    let out = wide.get(id);
+    if (!out) {
+      out = {};
+      for (const k of rowKeys) out[k] = r[k];
+      for (const l of labels) out[l] = null;
+      wide.set(id, out);
+    }
+    out[label(r[pivotKey])] = r[valueCol];
+  }
+
+  const outRows = Array.from(wide.values());
+  if (stage.total) {
+    for (const r of outRows) {
+      r.total = round(
+        labels.reduce((acc, l) => {
+          const v = r[l];
+          return typeof v === 'number' ? acc + v : acc;
+        }, 0),
+      );
+    }
+  }
+
+  return {
+    rows: outRows,
+    columns: [...rowKeys, ...labels, ...(stage.total ? ['total'] : [])],
+    rowKeys,
+  };
+}
+
 // --- main ------------------------------------------------------------------
 
 export async function runQuery(
@@ -582,9 +667,17 @@ export async function runQuery(
   const takeStage = stages.find(s => s.kind === 'take');
   const windowStages = stages.filter(s => s.kind === 'window');
   const forecastStage = stages.find(s => s.kind === 'forecast');
+  const pivotStage = stages.find(s => s.kind === 'pivot');
 
   const grouped = !!(groupStage || aggStage);
   const rawLimit = takeStage ? takeStage.n : DEFAULT_RAW_LIMIT;
+
+  // Pivot only makes sense on grouped rows; on raw rows it would be a no-op.
+  if (pivotStage && !groupStage) {
+    throw new Error(
+      'pivot needs a "group" stage whose key it can spread into columns',
+    );
+  }
 
   let rows: Row[];
   let sortPushed = false;
@@ -700,6 +793,18 @@ export async function runQuery(
 
     if (havingStage) {
       resultRows = resultRows.filter(r => evalCond(r, havingStage.cond));
+    }
+
+    // Pivot after `having` (which sees the long form) and before the final
+    // sort/take/select, which then act on the wide rows. The long-form
+    // columns are gone, so the column list is replaced rather than extended.
+    if (pivotStage) {
+      const pivoted = pivotRows(resultRows, keys, aggs, columns, pivotStage);
+      resultRows = pivoted.rows;
+      columns = pivoted.columns;
+      if (!sortStage && pivoted.rowKeys.length > 0) {
+        sortRows(resultRows, pivoted.rowKeys[0], 'asc');
+      }
     }
 
     // Re-sort once derived/aggregate columns exist so `sort` can target them.
