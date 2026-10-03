@@ -16,7 +16,9 @@ the Query tab is enabled.
 (`QueryConsole.tsx`, `QueryEditor.tsx`, `codeMirror-queryLanguage.ts`,
 `parse.ts`, `run.ts`, `budgets.ts`, + tests), route in
 `packages/desktop-client/src/components/FinancesApp.tsx`, sidebar entry in
-`PrimaryButtons.tsx`, mobile nav in `MobileNavTabs.tsx`, `queryConsole` feature
+`PrimaryButtons.tsx` (classic) and `sidebar/redesign/PrimaryNav.tsx` →
+`QueryNav.tsx` + `QuerySubRow.tsx` (redesigned sidebar, `newSidebarUI` flag),
+mobile nav in `MobileNavTabs.tsx`, `queryConsole` feature
 flag (`prefs.ts`, `useFeatureFlag.ts`, `Experimental.tsx`),
 `@codemirror/lint` dependency in `packages/desktop-client/package.json` + `yarn.lock`.
 **Conflict history:** The flag registration points (`prefs.ts`,

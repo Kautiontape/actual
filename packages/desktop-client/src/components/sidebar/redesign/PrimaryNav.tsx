@@ -16,6 +16,7 @@ import { useIsTestEnv } from '#hooks/useIsTestEnv';
 import { useSyncServerStatus } from '#hooks/useSyncServerStatus';
 
 import { NavRow } from './NavRow';
+import { QueryNav } from './QueryNav';
 
 export function PrimaryNav() {
   const { t } = useTranslation();
@@ -33,6 +34,7 @@ export function PrimaryNav() {
     >
       <NavRow title={t('Budget')} Icon={SvgWallet} to="/budget" />
       <NavRow title={t('Reports')} Icon={SvgReports} to="/reports" />
+      <QueryNav />
       <NavRow title={t('Schedules')} Icon={SvgCalendar3} to="/schedules" />
       <NavRow title={t('Payees')} Icon={SvgUserGroup} to="/payees" />
       <NavRow title={t('Rules')} Icon={SvgTuning} to="/rules" />
