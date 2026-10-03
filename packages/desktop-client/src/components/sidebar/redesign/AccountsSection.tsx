@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { spacing } from '@actual-app/components/tokens';
 import { View } from '@actual-app/components/view';
 
+import { useNetWorthExcludedAccountIds } from '#hooks/useNetWorthExcludedAccountIds';
 import * as bindings from '#spreadsheet/bindings';
 
 import { AccountSearchField } from './AccountSearchField';
@@ -19,6 +20,7 @@ import { bucketKey, useSidebarCollapseState } from './useSidebarCollapseState';
 export function AccountsSection() {
   const { t } = useTranslation();
   const tree = useSidebarAccountTree();
+  const excludedNetWorthIds = useNetWorthExcludedAccountIds();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const trimmedQuery = query.trim().toLowerCase();
@@ -69,7 +71,9 @@ export function AccountsSection() {
             isDragDisabled={isSearching}
             showSyncDot={showSyncDot}
             sideData={visibleTree.onBudget}
-            totalBinding={bindings.onBudgetAccountBalance()}
+            totalBinding={bindings.netWorthOnBudgetAccountBalance(
+              excludedNetWorthIds,
+            )}
             balanceTestId="sidebar-on-budget-balance"
             isOpen={collapse.isOpen('onbudget')}
             onToggle={() => collapse.toggle('onbudget')}
@@ -84,7 +88,9 @@ export function AccountsSection() {
             isDragDisabled={isSearching}
             showSyncDot={showSyncDot}
             sideData={visibleTree.offBudget}
-            totalBinding={bindings.offBudgetAccountBalance()}
+            totalBinding={bindings.netWorthOffBudgetAccountBalance(
+              excludedNetWorthIds,
+            )}
             balanceTestId="sidebar-off-budget-balance"
             isOpen={collapse.isOpen('offbudget')}
             onToggle={() => collapse.toggle('offbudget')}

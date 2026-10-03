@@ -25,6 +25,7 @@ import {
   useUpdateAccountGroupMutation,
 } from '#account-groups';
 import { useContextMenu } from '#hooks/useContextMenu';
+import { useNetWorthExcludedAccountIds } from '#hooks/useNetWorthExcludedAccountIds';
 import { pushModal } from '#modals/modalsSlice';
 import { useDispatch } from '#redux';
 import * as bindings from '#spreadsheet/bindings';
@@ -60,6 +61,7 @@ export function AccountGroupHeader({
   const [isEditing, setIsEditing] = useState(false);
   const updateGroup = useUpdateAccountGroupMutation();
   const deleteGroup = useDeleteAccountGroupMutation();
+  const excludedNetWorthIds = useNetWorthExcludedAccountIds();
 
   const [rowElement, setRowElement] = useState<HTMLDivElement | null>(null);
   useContextMenu({
@@ -172,9 +174,10 @@ export function AccountGroupHeader({
                 <SyncErrorRollup count={failedCount} />
                 <View style={{ flex: 1 }} />
                 <SidebarBalance
-                  binding={bindings.accountGroupBalance(
+                  binding={bindings.netWorthAccountGroupBalance(
                     group.id,
                     side === 'off',
+                    excludedNetWorthIds,
                   )}
                   style={{ fontSize: 11, color: groupLabelStyle.color }}
                 />

@@ -25,7 +25,8 @@ type SideGroupProps = {
   sideData: SidebarAccountSide;
   totalBinding: Binding<
     'account',
-    'onbudget-accounts-balance' | 'offbudget-accounts-balance'
+    | 'onbudget-accounts-balance-net-worth'
+    | 'offbudget-accounts-balance-net-worth'
   >;
   balanceTestId: string;
   isOpen: boolean;

@@ -1,4 +1,5 @@
 import { q } from '@actual-app/core/shared/query';
+import type { Query } from '@actual-app/core/shared/query';
 import type {
   AccountEntity,
   AccountGroupEntity,
@@ -50,46 +51,29 @@ export function accountBalanceUncleared(accountId: AccountEntity['id']) {
   } satisfies Binding<'account', 'balanceUncleared'>;
 }
 
-export function allAccountBalance(excludedIds: string[] = []) {
+export function allAccountBalance() {
   return {
     query: q('transactions')
-      .filter({
-        $and: [
-          { 'account.closed': false },
-          ...excludedIds.map(id => ({ 'account.id': { $ne: id } })),
-        ],
-      })
+      .filter({ 'account.closed': false })
       .calculate({ $sum: '$amount' }),
     name: 'accounts-balance',
   } satisfies Binding<'account', 'accounts-balance'>;
 }
 
-export function onBudgetAccountBalance(excludedIds: string[] = []) {
+export function onBudgetAccountBalance() {
   return {
     name: `onbudget-accounts-balance`,
     query: q('transactions')
-      .filter({
-        $and: [
-          { 'account.offbudget': false },
-          { 'account.closed': false },
-          ...excludedIds.map(id => ({ 'account.id': { $ne: id } })),
-        ],
-      })
+      .filter({ 'account.offbudget': false, 'account.closed': false })
       .calculate({ $sum: '$amount' }),
   } satisfies Binding<'account', 'onbudget-accounts-balance'>;
 }
 
-export function offBudgetAccountBalance(excludedIds: string[] = []) {
+export function offBudgetAccountBalance() {
   return {
     name: `offbudget-accounts-balance`,
     query: q('transactions')
-      .filter({
-        $and: [
-          { 'account.offbudget': true },
-          { 'account.closed': false },
-          ...excludedIds.map(id => ({ 'account.id': { $ne: id } })),
-        ],
-      })
+      .filter({ 'account.offbudget': true, 'account.closed': false })
       .calculate({ $sum: '$amount' }),
   } satisfies Binding<'account', 'offbudget-accounts-balance'>;
 }
@@ -117,6 +101,54 @@ export function accountGroupBalance(
       })
       .options({ splits: 'none' })
       .calculate({ $sum: '$amount' }),
+  } satisfies Binding<'account', `account-group-balance-${string}`>;
+}
+
+// ktn: net-worth variants of the account totals, leaving out accounts flagged
+// `exclude-from-net-worth`. They get their own cell names: a sheet cell keeps
+// whichever query bound it last, and the upstream names are also bound
+// unfiltered (All accounts register, command bar, mobile).
+function excludeAccounts(query: Query, excludedIds: AccountEntity['id'][]) {
+  return excludedIds.reduce(
+    (filtered, id) => filtered.filter({ 'account.id': { $ne: id } }),
+    query,
+  );
+}
+
+export function netWorthAllAccountBalance(excludedIds: AccountEntity['id'][]) {
+  return {
+    name: 'accounts-balance-net-worth',
+    query: excludeAccounts(allAccountBalance().query, excludedIds),
+  } satisfies Binding<'account', 'accounts-balance-net-worth'>;
+}
+
+export function netWorthOnBudgetAccountBalance(
+  excludedIds: AccountEntity['id'][],
+) {
+  return {
+    name: 'onbudget-accounts-balance-net-worth',
+    query: excludeAccounts(onBudgetAccountBalance().query, excludedIds),
+  } satisfies Binding<'account', 'onbudget-accounts-balance-net-worth'>;
+}
+
+export function netWorthOffBudgetAccountBalance(
+  excludedIds: AccountEntity['id'][],
+) {
+  return {
+    name: 'offbudget-accounts-balance-net-worth',
+    query: excludeAccounts(offBudgetAccountBalance().query, excludedIds),
+  } satisfies Binding<'account', 'offbudget-accounts-balance-net-worth'>;
+}
+
+export function netWorthAccountGroupBalance(
+  groupId: AccountGroupEntity['id'],
+  offbudget: boolean,
+  excludedIds: AccountEntity['id'][],
+) {
+  const binding = accountGroupBalance(groupId, offbudget);
+  return {
+    name: `${binding.name}-net-worth`,
+    query: excludeAccounts(binding.query, excludedIds),
   } satisfies Binding<'account', `account-group-balance-${string}`>;
 }
 

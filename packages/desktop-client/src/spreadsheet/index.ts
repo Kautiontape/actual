@@ -14,6 +14,10 @@ export type Spreadsheets = {
     'offbudget-accounts-balance': number;
     'closed-accounts-balance': number;
     [key: `account-group-balance-${string}`]: number;
+    // ktn: net-worth totals (see netWorth* in bindings.ts)
+    'accounts-balance-net-worth': number;
+    'onbudget-accounts-balance-net-worth': number;
+    'offbudget-accounts-balance-net-worth': number;
     balanceCleared: number;
     balanceUncleared: number;
     lastReconciled: string | null;
