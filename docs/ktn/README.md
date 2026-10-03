@@ -17,7 +17,7 @@ synced-pref keys, and the saved-queries modal registrations — to minimize
 conflicts.
 
 Revert caveats (tested at this base): reconcile-helpers, bank-sync-dedup,
-register-addnew-fix, migrations-idset, aql-extensions, saved-queries (within
+register-addnew-fix, aql-extensions, saved-queries (within
 the reverse-order sequence below), and dev-env revert cleanly. The query stack
 must be dropped in reverse order (aql-extensions → saved-queries →
 query-console); reverting query-console hits small conflicts in the flag
@@ -36,8 +36,13 @@ anchor commit).
 | Record Payment                            | record-payment.md      |
 | Bank-sync duplicate collapse              | bank-sync-dedup.md     |
 | Add New press-event fix                   | register-addnew-fix.md |
-| Migration validation by id set            | migrations-idset.md    |
 | AQL extensions                            | aql-extensions.md      |
 | Query Console                             | query-console.md       |
 | Saved Queries                             | saved-queries.md       |
 | Dev environment                           | dev-env.md             |
+
+Retired: **migrations-idset** (validate applied migrations by id set instead of
+position) was dropped at v26.10.0. Upstream's `ADDITIVE_ONLY_CUTOFF` check in
+`loot-core/src/server/migrate/migrations.ts` now applies post-cutoff
+migrations whose id sorts below an applied one as pending, which covers the
+fork's `1784000000000_saved_queries` migration.

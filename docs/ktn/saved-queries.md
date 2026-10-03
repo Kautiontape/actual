@@ -19,6 +19,8 @@ types (`handlers.ts`, `models/savedQuery.ts`), shared helpers in
 `FinancesApp.tsx`, sidebar in `PrimaryButtons.tsx`.
 **Conflict history:** The migration id sorting after upstream's newer migrations
 once bricked budget loading via the positional validity check — fixed by the
-migrations-idset patch. Registration points (`modalsSlice.ts`, `Modals.tsx`,
+migrations-idset patch, since retired: upstream's v26.10.0 `ADDITIVE_ONLY_CUTOFF`
+check tolerates interleaved post-cutoff ids, and this migration's id is past
+the cutoff. Registration points (`modalsSlice.ts`, `Modals.tsx`,
 `FinancesApp.tsx`, AQL schema) are recurring sync friction.
 **Upstream potential:** No — depends on Query Console, which stays fork-only.
