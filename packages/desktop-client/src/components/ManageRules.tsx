@@ -13,6 +13,8 @@ import { send } from '@actual-app/core/platform/client/connection';
 import * as undo from '@actual-app/core/platform/client/undo';
 import { getNormalisedString } from '@actual-app/core/shared/normalisation';
 import { q } from '@actual-app/core/shared/query';
+import { groupRules, RULE_GROUPS } from '@actual-app/core/shared/ruleGroups';
+import type { RuleGroup } from '@actual-app/core/shared/ruleGroups';
 import type {
   NewRuleEntity,
   RuleEntity,
@@ -32,6 +34,7 @@ import { describeSchedule } from '#util/schedule';
 import { InfiniteScrollWrapper } from './common/InfiniteScrollWrapper';
 import { Link } from './common/Link';
 import { Search } from './common/Search';
+import { RuleGroupHeader } from './rules/RuleGroupHeader';
 import { RulesHeader } from './rules/RulesHeader';
 import { RulesList } from './rules/RulesList';
 
@@ -124,7 +127,12 @@ export function ManageRules({
   const [allRules, setAllRules] = useState<RuleEntity[]>([]);
   const [page, setPage] = useState(0);
   const [filter, setFilter] = useState('');
+  const [expandedGroups, setExpandedGroups] = useState<Set<RuleGroup>>(
+    () => new Set(['custom']),
+  );
   const dispatch = useDispatch();
+  // A payee's rules are only a handful, so the payee modal stays a flat list
+  const isGrouped = !payeeId;
 
   const { schedules = [] } = useSchedules({
     query: useMemo(() => q('schedules').select('*'), []),
@@ -142,22 +150,50 @@ export function ManageRules({
     [payees, accounts, schedules, categories],
   );
 
-  const filteredRules = useMemo(() => {
+  const matchingRules = useMemo(() => {
     const rules = allRules.filter(rule => {
       const schedule = schedules.find(schedule => schedule.rule === rule.id);
       return schedule ? schedule.completed === false : true;
     });
 
-    return (
-      filter === ''
-        ? rules
-        : rules.filter(rule =>
-            getNormalisedString(ruleToString(rule, filterData)).includes(
-              getNormalisedString(filter),
-            ),
-          )
-    ).slice(0, 100 + page * 50);
-  }, [allRules, filter, filterData, page, schedules]);
+    return filter === ''
+      ? rules
+      : rules.filter(rule =>
+          getNormalisedString(ruleToString(rule, filterData)).includes(
+            getNormalisedString(filter),
+          ),
+        );
+  }, [allRules, filter, filterData, schedules]);
+
+  // Group before paginating so headers show full counts and collapsed groups
+  // don't use up the page. A search opens every group that has a match.
+  const sections = useMemo(() => {
+    let remaining = 100 + page * 50;
+    if (!isGrouped) {
+      return [
+        {
+          group: null,
+          total: 0,
+          isExpanded: true,
+          rules: matchingRules.slice(0, remaining),
+        },
+      ];
+    }
+    const groups = groupRules(matchingRules);
+    return RULE_GROUPS.filter(group => groups[group].length > 0).map(group => {
+      const isExpanded = filter !== '' || expandedGroups.has(group);
+      const rules = isExpanded ? groups[group].slice(0, remaining) : [];
+      remaining -= rules.length;
+      return { group, total: groups[group].length, isExpanded, rules };
+    });
+  }, [expandedGroups, filter, isGrouped, matchingRules, page]);
+
+  // Only rows on screen are selectable, so select-all can't reach into a
+  // collapsed group
+  const filteredRules = useMemo(
+    () => sections.flatMap(section => section.rules),
+    [sections],
+  );
 
   const selectedInst = useSelected('manage-rules', filteredRules, []);
   const [hoveredRule, setHoveredRule] = useState(null);
@@ -291,6 +327,23 @@ export function ManageRules({
     setHoveredRule(id);
   };
 
+  function onToggleGroup(group: RuleGroup) {
+    const isExpanded = expandedGroups.has(group);
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (isExpanded) {
+        next.delete(group);
+      } else {
+        next.add(group);
+      }
+      return next;
+    });
+    if (isExpanded) {
+      // Rows that just collapsed shouldn't stay selected out of sight
+      selectedInst.dispatch({ type: 'select-none' });
+    }
+  }
+
   return (
     <SelectedProvider instance={selectedInst}>
       <View>
@@ -311,9 +364,16 @@ export function ManageRules({
             }}
           >
             <Text>
-              <Trans>
-                Rules are always run in the order that you see them.
-              </Trans>{' '}
+              {isGrouped ? (
+                <Trans>
+                  Rules are grouped for display. Within each group they are
+                  listed in the order they run.
+                </Trans>
+              ) : (
+                <Trans>
+                  Rules are always run in the order that you see them.
+                </Trans>
+              )}{' '}
               <Link
                 variant="external"
                 to="https://actualbudget.org/docs/budgeting/rules/"
@@ -333,17 +393,30 @@ export function ManageRules({
         <View style={styles.tableContainer}>
           <RulesHeader />
           <InfiniteScrollWrapper loadMore={loadMore}>
-            {filteredRules.length === 0 ? (
+            {matchingRules.length === 0 ? (
               <EmptyMessage text={t('No rules')} style={{ marginTop: 15 }} />
             ) : (
-              <RulesList
-                rules={filteredRules}
-                selectedItems={selectedInst.items}
-                hoveredRule={hoveredRule}
-                onHover={onHover}
-                onEditRule={onEditRule}
-                onDeleteRule={rule => onDeleteRule(rule.id)}
-              />
+              sections.map(section => (
+                <View key={section.group ?? 'all'}>
+                  {section.group && (
+                    <RuleGroupHeader
+                      group={section.group}
+                      count={section.total}
+                      isExpanded={section.isExpanded}
+                      isDisabled={filter !== ''}
+                      onToggle={() => onToggleGroup(section.group)}
+                    />
+                  )}
+                  <RulesList
+                    rules={section.rules}
+                    selectedItems={selectedInst.items}
+                    hoveredRule={hoveredRule}
+                    onHover={onHover}
+                    onEditRule={onEditRule}
+                    onDeleteRule={rule => onDeleteRule(rule.id)}
+                  />
+                </View>
+              ))
             )}
           </InfiniteScrollWrapper>
         </View>

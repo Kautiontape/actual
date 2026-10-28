@@ -40,6 +40,7 @@ anchor commit).
 | Query Console                             | query-console.md       |
 | Saved Queries                             | saved-queries.md       |
 | Rule amount action default                | rule-amount-default.md |
+| Rule groups                               | rule-groups.md         |
 | Dev environment                           | dev-env.md             |
 
 Retired: **migrations-idset** (validate applied migrations by id set instead of
