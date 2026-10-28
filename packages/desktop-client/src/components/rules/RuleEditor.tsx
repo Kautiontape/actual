@@ -1191,7 +1191,9 @@ export function RuleEditor({
 
             if (field === 'field') {
               a.type = FIELD_TYPES.get(a.field);
-              a.value = value === 'date' ? '' : null;
+              // The amount input shows null as 0.00, so store the 0 it shows;
+              // a saved null would blank the amount of every matched transaction
+              a.value = value === 'date' ? '' : a.type === 'number' ? 0 : null;
               a.options = {
                 ...a.options,
                 template: undefined,

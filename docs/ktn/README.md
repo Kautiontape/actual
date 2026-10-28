@@ -39,6 +39,7 @@ anchor commit).
 | AQL extensions                            | aql-extensions.md      |
 | Query Console                             | query-console.md       |
 | Saved Queries                             | saved-queries.md       |
+| Rule amount action default                | rule-amount-default.md |
 | Dev environment                           | dev-env.md             |
 
 Retired: **migrations-idset** (validate applied migrations by id set instead of
